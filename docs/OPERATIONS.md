@@ -89,9 +89,11 @@ For the current `OCR_LANG=rus+eng`, the list should contain `rus` and `eng`.
 ### Telegram And LLM
 
 - `TELEGRAM_TOKEN` - required bot token.
+- `ALLOWED_TELEGRAM_USER_IDS` - comma or space separated Telegram user IDs allowed to use the bot. Empty means access control is disabled.
 - `OLLAMA_URL` - chat endpoint, usually `http://127.0.0.1:11434/api/chat`.
 - `OLLAMA_MODEL` - model name, for example `qwen3:8b`, `llama3.1:8b`, or `mistral`.
 - `MAX_HISTORY_MESSAGES` - number of recent messages kept in context.
+- `LOG_LEVEL` - Python logging level, usually `INFO`.
 
 ### Voice
 
@@ -126,7 +128,7 @@ Practical tuning:
 
 ## Security
 
-The current code does not include a Telegram user allowlist. Before running the bot outside a personal environment, add a check for `update.effective_user.id`.
+The bot supports a Telegram user allowlist through `ALLOWED_TELEGRAM_USER_IDS`. Before running the bot outside a personal environment, set it explicitly.
 
 Recommended configuration:
 

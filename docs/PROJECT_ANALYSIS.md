@@ -26,9 +26,9 @@ This project is a personal local AI assistant exposed through Telegram. It alrea
 | PDF | Available | Direct text extraction through `pypdf`. |
 | PDF OCR | Available | `pdf2image` + Tesseract. |
 | DOCX | Available | Paragraphs and tables. |
-| User access control | Missing | A user allowlist is needed. |
+| User access control | Available | `ALLOWED_TELEGRAM_USER_IDS`; disabled when empty. |
 | Persistence | Missing | History is lost on restart. |
-| Tests | Missing | At least pure function unit tests are needed. |
+| Tests | Partial | Helper-level `unittest` coverage exists; integration tests are still missing. |
 | RAG | Missing | Long documents are currently truncated. |
 
 ## Strengths
@@ -42,9 +42,9 @@ This project is a personal local AI assistant exposed through Telegram. It alrea
 
 ### 1. No Access Control
 
-Anyone who can message the bot can use the local LLM and document processing capabilities. For a personal bot, this is the highest operational risk.
+Anyone who can message the bot can use the local LLM and document processing capabilities if `ALLOWED_TELEGRAM_USER_IDS` is left empty. For a personal bot, this is the highest operational risk.
 
-Recommendation: add `ALLOWED_TELEGRAM_USER_IDS` and check it at the beginning of every handler.
+Recommendation: set `ALLOWED_TELEGRAM_USER_IDS` in production and keep `/myid` available for discovering Telegram IDs.
 
 ### 2. One Large File
 
@@ -102,10 +102,10 @@ Minimum refactoring sequence:
 
 ## Near-Term Technical Tasks
 
-- Add a Telegram user allowlist.
+- Set `ALLOWED_TELEGRAM_USER_IDS` in production.
 - Add a proper logger.
 - Add `.env` loading through `python-dotenv` or explicitly document shell export.
-- Add `pytest`.
+- Add broader test coverage for document extraction, prompt routing, and external error handling.
 - Split long responses to respect Telegram message limits.
 - Add retry/backoff for Ollama.
 - Make STT language configurable through environment variables.

@@ -1,4 +1,8 @@
+from __future__ import annotations
+
 import os
+import logging
+import sys
 import tempfile
 from pathlib import Path
 
@@ -16,6 +20,8 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434/api/chat")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3:8b")
 MAX_HISTORY_MESSAGES = int(os.getenv("MAX_HISTORY_MESSAGES", "12"))
+ALLOWED_TELEGRAM_USER_IDS_RAW = os.getenv("ALLOWED_TELEGRAM_USER_IDS", "")
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 WHISPER_MODEL_SIZE = os.getenv("WHISPER_MODEL_SIZE", "small")
 WHISPER_DEVICE = os.getenv("WHISPER_DEVICE", "cpu")
@@ -32,6 +38,13 @@ POPPLER_PATH = os.getenv("POPPLER_PATH", "/opt/homebrew/bin")
 TESSERACT_CMD = os.getenv("TESSERACT_CMD", "/opt/homebrew/bin/tesseract")
 
 pytesseract.pytesseract.tesseract_cmd = TESSERACT_CMD
+
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    stream=sys.stdout,
+)
+LOGGER = logging.getLogger("telegram_ollama_bot")
 
 USER_HISTORY = {}
 STT_MODEL = None
@@ -146,6 +159,63 @@ MODES = {
 }
 
 
+def parse_allowed_user_ids(raw_value: str) -> set[int]:
+    user_ids = set()
+
+    for token in raw_value.replace(",", " ").split():
+        try:
+            user_id = int(token)
+        except ValueError as exc:
+            raise ValueError(
+                f"Invalid Telegram user ID in ALLOWED_TELEGRAM_USER_IDS: {token}"
+            ) from exc
+
+        if user_id <= 0:
+            raise ValueError(
+                f"Telegram user IDs must be positive integers: {token}"
+            )
+
+        user_ids.add(user_id)
+
+    return user_ids
+
+
+ALLOWED_TELEGRAM_USER_IDS = parse_allowed_user_ids(ALLOWED_TELEGRAM_USER_IDS_RAW)
+
+
+def is_user_allowed(user_id: int | None) -> bool:
+    if not ALLOWED_TELEGRAM_USER_IDS:
+        return True
+
+    return user_id in ALLOWED_TELEGRAM_USER_IDS
+
+
+def get_update_user_id(update: Update) -> int | None:
+    if not update.effective_user:
+        return None
+
+    return update.effective_user.id
+
+
+async def reject_unauthorized(update: Update) -> bool:
+    user_id = get_update_user_id(update)
+
+    if is_user_allowed(user_id):
+        return False
+
+    username = getattr(update.effective_user, "username", None)
+    LOGGER.warning(
+        "Unauthorized Telegram access rejected: user_id=%s username=%s",
+        user_id,
+        username,
+    )
+
+    if update.message:
+        await update.message.reply_text("Доступ к этому боту ограничен.")
+
+    return True
+
+
 async def ask_ollama(user_id: int, text: str, mode: str = "default") -> str:
     history = USER_HISTORY.setdefault(user_id, [])
     system_prompt = MODES.get(mode, MODES["default"])
@@ -190,10 +260,11 @@ def get_stt_model():
     global STT_MODEL
 
     if STT_MODEL is None:
-        print(
-            f"LOADING WHISPER MODEL: {WHISPER_MODEL_SIZE}, "
-            f"device={WHISPER_DEVICE}, compute_type={WHISPER_COMPUTE_TYPE}",
-            flush=True
+        LOGGER.info(
+            "Loading Whisper model: model=%s device=%s compute_type=%s",
+            WHISPER_MODEL_SIZE,
+            WHISPER_DEVICE,
+            WHISPER_COMPUTE_TYPE,
         )
 
         STT_MODEL = WhisperModel(
@@ -202,7 +273,7 @@ def get_stt_model():
             compute_type=WHISPER_COMPUTE_TYPE
         )
 
-        print("WHISPER MODEL LOADED", flush=True)
+        LOGGER.info("Whisper model loaded")
 
     return STT_MODEL
 
@@ -255,11 +326,13 @@ def extract_text_from_pdf_direct(file_path: str) -> str:
 
 
 def extract_text_from_pdf_ocr(file_path: str) -> str:
-    print(
-        f"OCR STARTED: dpi={OCR_DPI}, lang={OCR_LANG}, "
-        f"max_pages={MAX_OCR_PAGES}, poppler_path={POPPLER_PATH}, "
-        f"tesseract_cmd={TESSERACT_CMD}",
-        flush=True
+    LOGGER.info(
+        "OCR started: dpi=%s lang=%s max_pages=%s poppler_path=%s tesseract_cmd=%s",
+        OCR_DPI,
+        OCR_LANG,
+        MAX_OCR_PAGES,
+        POPPLER_PATH,
+        TESSERACT_CMD,
     )
 
     images = convert_from_path(
@@ -274,7 +347,7 @@ def extract_text_from_pdf_ocr(file_path: str) -> str:
     ocr_text_parts = []
 
     for page_num, image in enumerate(images, start=1):
-        print(f"OCR PAGE {page_num}/{len(images)}", flush=True)
+        LOGGER.info("OCR page %s/%s", page_num, len(images))
 
         text = pytesseract.image_to_string(
             image,
@@ -286,7 +359,7 @@ def extract_text_from_pdf_ocr(file_path: str) -> str:
 
     result = "\n".join(ocr_text_parts).strip()
 
-    print("OCR FINISHED", flush=True)
+    LOGGER.info("OCR finished")
 
     return result
 
@@ -350,6 +423,9 @@ def trim_document_text(text: str) -> tuple[str, bool]:
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if await reject_unauthorized(update):
+        return
+
     await update.message.reply_text(
         "Я локальный AI-бот на Ollama.\n\n"
         "Команды:\n"
@@ -375,15 +451,24 @@ async def myid(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if await reject_unauthorized(update):
+        return
+
     USER_HISTORY.pop(update.effective_user.id, None)
     await update.message.reply_text("История диалога очищена.")
 
 
 async def model(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if await reject_unauthorized(update):
+        return
+
     await update.message.reply_text(f"Текущая модель: {OLLAMA_MODEL}")
 
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if await reject_unauthorized(update):
+        return
+
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.post(
@@ -408,11 +493,17 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Poppler path: {POPPLER_PATH}\n"
             f"Tesseract cmd: {TESSERACT_CMD}"
         )
-    except Exception as e:
-        await update.message.reply_text(f"Статус: ошибка\n{e}")
+    except Exception:
+        LOGGER.exception("Status check failed")
+        await update.message.reply_text(
+            "Статус: ошибка\nНе удалось обратиться к Ollama. Подробности записаны в лог."
+        )
 
 
 async def handle_mode(update: Update, context: ContextTypes.DEFAULT_TYPE, mode: str):
+    if await reject_unauthorized(update):
+        return
+
     text = get_command_text(update, mode)
 
     if not text:
@@ -433,8 +524,15 @@ async def handle_mode(update: Update, context: ContextTypes.DEFAULT_TYPE, mode: 
     try:
         answer = await ask_ollama(update.effective_user.id, text, mode=mode)
         await update.message.reply_text(answer)
-    except Exception as e:
-        await update.message.reply_text(f"Ошибка при обращении к Ollama: {e}")
+    except Exception:
+        LOGGER.exception(
+            "Ollama request failed: user_id=%s mode=%s",
+            get_update_user_id(update),
+            mode,
+        )
+        await update.message.reply_text(
+            "Ошибка при обращении к Ollama. Подробности записаны в лог."
+        )
 
 
 async def email(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -466,6 +564,9 @@ async def followup(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if await reject_unauthorized(update):
+        return
+
     await update.message.reply_text("Голосовое получил. Распознаю локально...")
 
     try:
@@ -505,11 +606,20 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text(final_answer)
 
-    except Exception as e:
-        await update.message.reply_text(f"Ошибка при обработке голосового: {e}")
+    except Exception:
+        LOGGER.exception(
+            "Voice processing failed: user_id=%s",
+            get_update_user_id(update),
+        )
+        await update.message.reply_text(
+            "Ошибка при обработке голосового. Подробности записаны в лог."
+        )
 
 
 async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if await reject_unauthorized(update):
+        return
+
     document = update.message.document
 
     if not document:
@@ -587,11 +697,21 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text(header + answer)
 
-    except Exception as e:
-        await update.message.reply_text(f"Ошибка при обработке файла: {e}")
+    except Exception:
+        LOGGER.exception(
+            "Document processing failed: user_id=%s filename=%s",
+            get_update_user_id(update),
+            filename,
+        )
+        await update.message.reply_text(
+            "Ошибка при обработке файла. Подробности записаны в лог."
+        )
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if await reject_unauthorized(update):
+        return
+
     text = update.message.text.strip()
 
     if not text:
@@ -602,33 +722,51 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         answer = await ask_ollama(update.effective_user.id, text, mode="default")
         await update.message.reply_text(answer)
-    except Exception as e:
-        await update.message.reply_text(f"Ошибка при обращении к Ollama: {e}")
+    except Exception:
+        LOGGER.exception(
+            "Ollama request failed: user_id=%s mode=default",
+            get_update_user_id(update),
+        )
+        await update.message.reply_text(
+            "Ошибка при обращении к Ollama. Подробности записаны в лог."
+        )
 
 
 def main():
     if not TELEGRAM_TOKEN:
         raise RuntimeError("Не задан TELEGRAM_TOKEN")
 
-    print("BOT STARTING...", flush=True)
-    print(f"OLLAMA_URL: {OLLAMA_URL}", flush=True)
-    print(f"OLLAMA_MODEL: {OLLAMA_MODEL}", flush=True)
-    print(f"MAX_HISTORY_MESSAGES: {MAX_HISTORY_MESSAGES}", flush=True)
-    print(
-        f"WHISPER: model={WHISPER_MODEL_SIZE}, "
-        f"device={WHISPER_DEVICE}, compute_type={WHISPER_COMPUTE_TYPE}",
-        flush=True
+    LOGGER.info("Bot starting")
+    LOGGER.info("OLLAMA_URL: %s", OLLAMA_URL)
+    LOGGER.info("OLLAMA_MODEL: %s", OLLAMA_MODEL)
+    LOGGER.info("MAX_HISTORY_MESSAGES: %s", MAX_HISTORY_MESSAGES)
+    LOGGER.info(
+        "WHISPER: model=%s device=%s compute_type=%s",
+        WHISPER_MODEL_SIZE,
+        WHISPER_DEVICE,
+        WHISPER_COMPUTE_TYPE,
     )
-    print(
-        f"DOCUMENTS: max_file_size={MAX_FILE_SIZE_MB}MB, "
-        f"max_document_chars={MAX_DOCUMENT_CHARS}",
-        flush=True
+    LOGGER.info(
+        "DOCUMENTS: max_file_size=%sMB max_document_chars=%s",
+        MAX_FILE_SIZE_MB,
+        MAX_DOCUMENT_CHARS,
     )
-    print(
-        f"OCR: lang={OCR_LANG}, dpi={OCR_DPI}, max_pages={MAX_OCR_PAGES}, "
-        f"poppler_path={POPPLER_PATH}, tesseract_cmd={TESSERACT_CMD}",
-        flush=True
+    LOGGER.info(
+        "OCR: lang=%s dpi=%s max_pages=%s poppler_path=%s tesseract_cmd=%s",
+        OCR_LANG,
+        OCR_DPI,
+        MAX_OCR_PAGES,
+        POPPLER_PATH,
+        TESSERACT_CMD,
     )
+
+    if ALLOWED_TELEGRAM_USER_IDS:
+        LOGGER.info(
+            "Access control enabled: allowed_user_count=%s",
+            len(ALLOWED_TELEGRAM_USER_IDS),
+        )
+    else:
+        LOGGER.warning("Access control disabled: ALLOWED_TELEGRAM_USER_IDS is empty")
 
     app = Application.builder().token(TELEGRAM_TOKEN).build()
 
@@ -650,7 +788,7 @@ def main():
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    print("BOT POLLING STARTED", flush=True)
+    LOGGER.info("Bot polling started")
 
     app.run_polling()
 

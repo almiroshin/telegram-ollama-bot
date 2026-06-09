@@ -16,11 +16,11 @@ The project is a working personal prototype. Core workflows are already availabl
 
 Goal: make the current bot safer and easier to reproduce without a major rewrite.
 
-- Add a Telegram user allowlist.
-- Hide low-level errors from normal user responses and write details to logs.
-- Replace `print` with `logging`.
+- Add a Telegram user allowlist. Done in the first Phase 0 increment.
+- Hide low-level errors from normal user responses and write details to logs. Started in the first Phase 0 increment.
+- Replace `print` with `logging`. Done in the first Phase 0 increment.
 - Keep `README`, `.env.example`, `requirements.txt`, and operations documentation up to date.
-- Add basic smoke checks: syntax, configuration import, and unit tests for pure functions.
+- Add basic smoke checks: syntax, configuration import, and unit tests for pure functions. Started in the first Phase 0 increment.
 - Document the minimum supported Python version.
 
 Readiness criteria:
@@ -178,8 +178,8 @@ Readiness criteria:
 
 ## Next Sprint Priorities
 
-1. Telegram user allowlist.
-2. `logging` instead of `print`.
-3. Modular `app/` structure.
-4. Unit tests for `trim_document_text()`, `extract_text_from_txt()`, and prompt mode routing.
-5. Robust error handling for Ollama, STT, and OCR.
+1. Modular `app/` structure.
+2. More unit tests for document extraction, prompt mode routing, and error paths.
+3. Robust retry/backoff for Ollama, STT, and OCR.
+4. Persistent history storage.
+5. Background queue for OCR/STT workloads.

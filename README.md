@@ -84,9 +84,11 @@ Main environment variables:
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `TELEGRAM_TOKEN` | none | Telegram bot token. Required. |
+| `ALLOWED_TELEGRAM_USER_IDS` | empty | Comma or space separated Telegram user IDs. Empty means access control is disabled. |
 | `OLLAMA_URL` | `http://127.0.0.1:11434/api/chat` | Ollama Chat API endpoint. |
 | `OLLAMA_MODEL` | `qwen3:8b` | Ollama model name. |
 | `MAX_HISTORY_MESSAGES` | `12` | Number of recent messages kept in memory. |
+| `LOG_LEVEL` | `INFO` | Python logging level. |
 | `WHISPER_MODEL_SIZE` | `small` | `faster-whisper` model size. |
 | `WHISPER_DEVICE` | `cpu` | STT device: `cpu`, `cuda`, or `auto`. |
 | `WHISPER_COMPUTE_TYPE` | `int8` | `faster-whisper` compute type. |
@@ -114,6 +116,12 @@ Check Ollama:
 curl http://127.0.0.1:11434/api/tags
 ```
 
+Run unit tests:
+
+```bash
+python3 -m unittest discover -s tests
+```
+
 After starting the bot, send this command in Telegram:
 
 ```text
@@ -123,12 +131,12 @@ After starting the bot, send this command in Telegram:
 ## Current Limitations
 
 - Conversation history is stored in memory and is lost after restart.
-- There is no user allowlist yet; anyone who can reach the bot can use it.
+- Access control is disabled unless `ALLOWED_TELEGRAM_USER_IDS` is set.
 - `bot.py` currently contains all layers: configuration, Telegram handlers, LLM client, STT, document parsing, and OCR.
 - Documents longer than `MAX_DOCUMENT_CHARS` are truncated; RAG/document indexing is not implemented yet.
-- There are no automated tests yet.
+- Automated tests currently cover helper logic only; Telegram/Ollama integration tests are not implemented yet.
 - Raw exception messages are returned to users in some error paths.
 
 ## Recommended Next Step
 
-Add Telegram user access control and split the application into modules. This reduces the main operational risk and makes future work easier: persistent memory, background queues for heavy tasks, document RAG, and tests.
+Set `ALLOWED_TELEGRAM_USER_IDS` in production and split the application into modules. This reduces the main operational risk and makes future work easier: persistent memory, background queues for heavy tasks, document RAG, and broader tests.

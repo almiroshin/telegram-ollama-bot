@@ -110,6 +110,7 @@ Minimum required value:
 
 ```text
 TELEGRAM_TOKEN=...
+ALLOWED_TELEGRAM_USER_IDS=...
 ```
 
 Common Mac mini values:
@@ -117,6 +118,7 @@ Common Mac mini values:
 ```text
 OLLAMA_URL=http://127.0.0.1:11434/api/chat
 OLLAMA_MODEL=qwen3:8b
+LOG_LEVEL=INFO
 POPPLER_PATH=/opt/homebrew/bin
 TESSERACT_CMD=/opt/homebrew/bin/tesseract
 ```
