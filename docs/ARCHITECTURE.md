@@ -46,7 +46,7 @@ flowchart LR
     O --> M
 ```
 
-The current implementation is still Telegram-first. The target design is a channel adapter layer where Telegram and eXpress translate platform-specific events into internal assistant requests.
+The current implementation is still Telegram-first. Text messages and mode commands already pass through channel-neutral `AssistantRequest` and `AssistantResponse` models. The target design is a fuller channel adapter layer where Telegram and eXpress translate platform-specific events into internal assistant requests.
 
 ## Entry Point
 
@@ -66,6 +66,7 @@ bot.py
 app/
   __init__.py
   access.py
+  assistant.py
   config.py
   documents.py
   handlers.py
@@ -82,6 +83,7 @@ Responsibilities:
 
 - `bot.py` - stable launchd-compatible entry point.
 - `app/config.py` - environment parsing, typed settings, logging setup.
+- `app/assistant.py` - channel-neutral request/response models and text request handling.
 - `app/prompts.py` - system prompts and prompt modes.
 - `app/access.py` - owner checks and access decisions.
 - `app/history.py` - SQLite-backed conversation history repository.
@@ -96,12 +98,14 @@ Responsibilities:
 
 1. The user sends a text message or command.
 2. The channel handler selects a prompt mode: `default`, `audit`, `proposal`, `tender`, `vendor`, `risk`, `email`, `rewrite`, `shorten`, `vip`, `surf`, `shell`, or `followup`.
-3. `ask_ollama()` builds the request:
+3. The channel handler builds an `AssistantRequest`.
+4. `handle_text_request()` calls `ask_ollama()`.
+5. `ask_ollama()` builds the LLM request:
    - the system prompt for the selected mode;
    - the user's recent history;
    - the new user message.
-4. The request is sent to `OLLAMA_URL` with `POST`.
-5. The response is stored in SQLite and sent back through the active channel.
+6. The request is sent to `OLLAMA_URL` with `POST`.
+7. The response is stored in SQLite and sent back through the active channel.
 
 History is stored in the SQLite database configured by `HISTORY_DB_PATH`:
 

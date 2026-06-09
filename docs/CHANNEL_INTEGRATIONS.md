@@ -69,7 +69,9 @@ The core must not depend on `python-telegram-bot` objects. Channel adapters shou
 
 ## Internal Request Model
 
-Planned internal object:
+Initial implementation exists in `app/assistant.py` for text messages and mode commands.
+
+Internal object:
 
 ```text
 AssistantRequest(
@@ -86,7 +88,7 @@ AssistantRequest(
 )
 ```
 
-Planned internal response:
+Internal response:
 
 ```text
 AssistantResponse(
@@ -121,9 +123,9 @@ Expected output:
 Tasks:
 
 - extract Telegram-specific logic from `app/handlers.py` into `app/channels/telegram.py`;
-- introduce channel-neutral request handling in `app/assistant.py`;
+- introduce channel-neutral request handling in `app/assistant.py`. Started for text requests.
 - keep prompt modes, LLM access, history, users, and documents in shared modules;
-- add unit tests for command routing without Telegram objects.
+- add unit tests for command routing without Telegram objects. Started.
 
 Expected output:
 

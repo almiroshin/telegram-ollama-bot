@@ -283,6 +283,59 @@ class BotHelperTests(unittest.TestCase):
             handlers.parse_target_user_id(SimpleNamespace(args=["abc"]))
         )
 
+    def test_assistant_command_routing_is_channel_neutral(self):
+        assistant = self.import_module("app.assistant")
+
+        self.assertEqual(assistant.normalize_command("/audit@my_bot"), "audit")
+        self.assertEqual(assistant.get_mode_for_command("/proposal"), "proposal")
+        self.assertEqual(assistant.get_mode_for_command("unknown"), None)
+        self.assertIn("/risk", assistant.get_example_for_mode("risk"))
+
+    def test_assistant_request_and_response_models(self):
+        assistant = self.import_module("app.assistant")
+
+        request = assistant.AssistantRequest(
+            channel=assistant.EXPRESS_CHANNEL,
+            channel_user_id="u-1",
+            internal_user_id=1,
+            chat_id="chat-1",
+            text="hello",
+            mode="default",
+        )
+        response = assistant.AssistantResponse(text="done")
+
+        self.assertEqual(request.channel, assistant.EXPRESS_CHANNEL)
+        self.assertEqual(request.text, "hello")
+        self.assertEqual(response.visibility, assistant.PUBLIC_VISIBILITY)
+
+    def test_build_telegram_assistant_request(self):
+        handlers = self.import_module("app.handlers")
+
+        update = SimpleNamespace(
+            effective_user=SimpleNamespace(
+                id=100,
+                username="owner",
+                full_name="Owner User",
+            ),
+            effective_chat=SimpleNamespace(id=200),
+            message=SimpleNamespace(message_id=300),
+        )
+
+        request = handlers.build_telegram_assistant_request(
+            update,
+            "hello",
+            mode="audit",
+            command="audit",
+        )
+
+        self.assertEqual(request.channel, "telegram")
+        self.assertEqual(request.channel_user_id, "100")
+        self.assertEqual(request.internal_user_id, 100)
+        self.assertEqual(request.chat_id, "200")
+        self.assertEqual(request.message_id, "300")
+        self.assertEqual(request.mode, "audit")
+        self.assertEqual(request.metadata["username"], "owner")
+
     def test_get_command_text_removes_command_prefix(self):
         handlers = self.import_module("app.handlers")
         update = SimpleNamespace(message=SimpleNamespace(text="/email hello"))

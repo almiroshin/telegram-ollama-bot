@@ -17,6 +17,12 @@ from app.access import (
     reject_non_owner,
     reject_unauthorized,
 )
+from app.assistant import (
+    TELEGRAM_CHANNEL,
+    AssistantRequest,
+    get_example_for_mode,
+    handle_text_request,
+)
 from app.config import SETTINGS
 from app.documents import extract_text_from_file, trim_document_text
 from app.llm import ask_ollama, reset_user_history
@@ -81,6 +87,39 @@ def parse_target_user_id(context: ContextTypes.DEFAULT_TYPE) -> int | None:
         return None
 
     return user_id
+
+
+def build_telegram_assistant_request(
+    update: Update,
+    text: str,
+    mode: str = "default",
+    command: str | None = None,
+) -> AssistantRequest:
+    user_id = get_update_user_id(update)
+    if user_id is None:
+        raise ValueError("Telegram update does not contain an effective user")
+
+    chat = getattr(update, "effective_chat", None)
+    message = getattr(update, "message", None)
+
+    return AssistantRequest(
+        channel=TELEGRAM_CHANNEL,
+        channel_user_id=str(user_id),
+        internal_user_id=user_id,
+        text=text,
+        mode=mode,
+        command=command,
+        chat_id=str(chat.id) if chat else None,
+        message_id=(
+            str(message.message_id)
+            if message and hasattr(message, "message_id")
+            else None
+        ),
+        metadata={
+            "username": getattr(update.effective_user, "username", None),
+            "full_name": get_effective_full_name(update),
+        },
+    )
 
 
 async def notify_owners_about_access_request(
@@ -444,28 +483,20 @@ async def handle_mode(update: Update, context: ContextTypes.DEFAULT_TYPE, mode: 
     text = get_command_text(update, mode)
 
     if not text:
-        examples = {
-            "email": "Например:\n/email Напиши письмо партнеру: попроси прислать спецификацию Dell до пятницы",
-            "rewrite": "Например:\n/rewrite Сделай текст более деловым: ...",
-            "shorten": "Например:\n/shorten Сократи этот текст для Telegram: ...",
-            "vip": "Например:\n/vip Опиши проект цифрового медицинского профиля для министра",
-            "surf": "Например:\n/surf Упакуй этот текст в стиле SURF Consulting: ...",
-            "audit": "Например:\n/audit Заказчик хочет модернизировать СХД и серверы, вводные такие: ...",
-            "proposal": "Например:\n/proposal Подготовь структуру КП для обновления инфраструктуры филиалов",
-            "tender": "Например:\n/tender Проанализируй требования закупки и выдели риски участия: ...",
-            "vendor": "Например:\n/vendor Подбери альтернативы для СХД под VMware/Proxmox и резервное копирование",
-            "risk": "Например:\n/risk Проверь риски поставки и внедрения для проекта: ...",
-            "shell": "Например:\n/shell Как проверить, что Telegram-бот запущен и нет дублей?",
-            "followup": "Например:\n/followup После встречи обсудили СХД, заказчик ждет сравнение Dell/HPE/NetApp"
-        }
-        await update.message.reply_text(examples.get(mode, "Пришлите текст после команды."))
+        await update.message.reply_text(get_example_for_mode(mode))
         return
 
     await update.message.chat.send_action(action="typing")
 
     try:
-        answer = await ask_ollama(update.effective_user.id, text, mode=mode)
-        await update.message.reply_text(answer)
+        request = build_telegram_assistant_request(
+            update,
+            text,
+            mode=mode,
+            command=mode,
+        )
+        response = await handle_text_request(request)
+        await update.message.reply_text(response.text)
     except Exception:
         LOGGER.exception(
             "Ollama request failed: user_id=%s mode=%s",
@@ -682,8 +713,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.chat.send_action(action="typing")
 
     try:
-        answer = await ask_ollama(update.effective_user.id, text, mode="default")
-        await update.message.reply_text(answer)
+        request = build_telegram_assistant_request(update, text)
+        response = await handle_text_request(request)
+        await update.message.reply_text(response.text)
     except Exception:
         LOGGER.exception(
             "Ollama request failed: user_id=%s mode=default",
