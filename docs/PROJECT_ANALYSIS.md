@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This project is a personal local AI assistant exposed through Telegram. It already covers practical workflows: business writing, rewriting, follow-ups, shell help, voice notes, and document analysis. The implementation is compact and easy to understand, but it is currently closer to a working prototype than a production-ready service.
+This project is a personal local AI assistant exposed through Telegram. It already covers practical workflows: business writing, rewriting, follow-ups, shell help, voice notes, and document analysis. The implementation now has a modular baseline, but it is still closer to a working prototype than a production-ready service.
 
 ## What Works Well
 
@@ -33,7 +33,7 @@ This project is a personal local AI assistant exposed through Telegram. It alrea
 
 ## Strengths
 
-- Fast to start and easy to inspect: one file and few moving parts.
+- Fast to start and easy to inspect: a thin entry point plus focused modules.
 - Local-first design: data does not need to leave the host machine for external LLM APIs.
 - Business-focused prompt modes are already useful.
 - OCR makes the bot useful for scans and procurement-style documents.
@@ -46,11 +46,11 @@ Anyone who can message the bot can use the local LLM and document processing cap
 
 Recommendation: set `ALLOWED_TELEGRAM_USER_IDS` in production and keep `/myid` available for discovering Telegram IDs.
 
-### 2. One Large File
+### 2. Runtime State Is Still In Memory
 
-`bot.py` contains configuration, prompts, handlers, the LLM client, STT, OCR, and document parsing. This is acceptable for a prototype, but it will slow down testing and development as the project grows.
+Conversation history is still stored in process memory. A restart clears the context, and there is no way to inspect, compact, or expire history outside the running process.
 
-Recommendation: split the code into `app/config.py`, `app/llm.py`, `app/documents.py`, `app/stt.py`, and `app/telegram_handlers.py`.
+Recommendation: add a small SQLite-backed history repository with explicit cleanup and `/reset` support.
 
 ### 3. Heavy Work Inside Handlers
 
@@ -81,10 +81,9 @@ app/
   llm.py
   history.py
   access.py
-  telegram_handlers.py
+  handlers.py
   stt.py
   documents.py
-  ocr.py
   logging_config.py
 tests/
   test_documents.py
@@ -95,16 +94,17 @@ tests/
 Minimum refactoring sequence:
 
 1. Keep `requirements.txt`, `.env.example`, and documentation current.
-2. Add a user allowlist without changing the overall structure.
-3. Move pure document parsing functions into a separate module.
-4. Add tests for those functions.
-5. Extract the Ollama client and Telegram handlers.
+2. Add a user allowlist without changing the overall structure. Done.
+3. Move pure document parsing functions into a separate module. Done.
+4. Add tests for helper functions. Started.
+5. Extract the Ollama client and Telegram handlers. Done.
 
 ## Near-Term Technical Tasks
 
 - Set `ALLOWED_TELEGRAM_USER_IDS` in production.
 - Add a proper logger.
 - Add `.env` loading through `python-dotenv` or explicitly document shell export.
+- Add SQLite-backed persistent history.
 - Add broader test coverage for document extraction, prompt routing, and external error handling.
 - Split long responses to respect Telegram message limits.
 - Add retry/backoff for Ollama.

@@ -27,11 +27,41 @@ flowchart LR
 
 The main entry point is `main()` in [bot.py](../bot.py). It:
 
+- delegates to `app.main.main()`;
 - validates that `TELEGRAM_TOKEN` is set;
-- prints the current runtime configuration;
+- logs the current runtime configuration;
 - creates a `python-telegram-bot` `Application`;
 - registers command handlers and message handlers;
 - starts polling with `app.run_polling()`.
+
+## Module Layout
+
+```text
+bot.py
+app/
+  __init__.py
+  access.py
+  config.py
+  documents.py
+  handlers.py
+  llm.py
+  main.py
+  prompts.py
+  stt.py
+tests/
+```
+
+Responsibilities:
+
+- `bot.py` - stable launchd-compatible entry point.
+- `app/config.py` - environment parsing, typed settings, logging setup.
+- `app/prompts.py` - system prompts and prompt modes.
+- `app/access.py` - Telegram user allowlist.
+- `app/llm.py` - Ollama Chat API client and in-memory conversation history.
+- `app/stt.py` - `faster-whisper` model loading and transcription.
+- `app/documents.py` - text extraction from TXT/MD/PDF/DOCX and OCR fallback.
+- `app/handlers.py` - Telegram command and message handlers.
+- `app/main.py` - application wiring and polling startup.
 
 ## Text Request Flow
 
@@ -91,35 +121,12 @@ Configuration is read from environment variables when the module is imported. Va
 
 ## Responsibility Boundaries
 
-`bot.py` currently contains all main layers:
-
-- configuration;
-- system prompts and prompt modes;
-- Ollama client;
-- Telegram command handlers;
-- STT;
-- document parsing;
-- OCR;
-- runtime state.
-
-This is convenient for a prototype, but the code should be split into modules as the project grows:
-
-```text
-app/config.py
-app/prompts.py
-app/llm.py
-app/history.py
-app/telegram_handlers.py
-app/stt.py
-app/documents.py
-app/ocr.py
-```
+The code now has a modular baseline. The next boundary worth extracting is persistent history, because `app/llm.py` still stores conversation state in process memory.
 
 ## Main Technical Risks
 
-- No Telegram user access control.
+- Telegram user access control is disabled unless `ALLOWED_TELEGRAM_USER_IDS` is set.
 - Conversation history is not persistent.
 - Heavy OCR/STT work is executed inside handlers and can delay processing.
-- No tests around extraction, prompt routing, or error handling.
-- External errors are exposed to users directly.
+- Test coverage is still helper-level and does not cover Telegram/Ollama integration.
 - No graceful shutdown, health endpoint, or metrics.

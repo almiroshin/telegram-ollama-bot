@@ -66,9 +66,15 @@ def build_dependency_stubs():
     }
 
 
+def clear_app_modules():
+    for module_name in list(sys.modules):
+        if module_name == "bot" or module_name == "app" or module_name.startswith("app."):
+            sys.modules.pop(module_name, None)
+
+
 class BotHelperTests(unittest.TestCase):
-    def load_bot(self, allowed_user_ids=""):
-        sys.modules.pop("bot", None)
+    def import_module(self, module_name, allowed_user_ids=""):
+        clear_app_modules()
 
         with patch.dict(sys.modules, build_dependency_stubs()):
             with patch.dict(
@@ -78,37 +84,37 @@ class BotHelperTests(unittest.TestCase):
                     "LOG_LEVEL": "CRITICAL",
                 },
             ):
-                return importlib.import_module("bot")
+                return importlib.import_module(module_name)
 
     def test_parse_allowed_user_ids_accepts_comma_and_space_separated_values(self):
-        bot = self.load_bot()
+        config = self.import_module("app.config")
 
         self.assertEqual(
-            bot.parse_allowed_user_ids("123, 456 789"),
+            config.parse_allowed_user_ids("123, 456 789"),
             {123, 456, 789},
         )
 
     def test_parse_allowed_user_ids_rejects_invalid_values(self):
-        bot = self.load_bot()
+        config = self.import_module("app.config")
 
         with self.assertRaisesRegex(ValueError, "abc"):
-            bot.parse_allowed_user_ids("123,abc")
+            config.parse_allowed_user_ids("123,abc")
 
     def test_is_user_allowed_allows_everyone_when_allowlist_is_empty(self):
-        bot = self.load_bot()
+        access = self.import_module("app.access")
 
-        self.assertTrue(bot.is_user_allowed(None))
-        self.assertTrue(bot.is_user_allowed(123))
+        self.assertTrue(access.is_user_allowed(None))
+        self.assertTrue(access.is_user_allowed(123))
 
     def test_is_user_allowed_checks_configured_allowlist(self):
-        bot = self.load_bot(allowed_user_ids="100,200")
+        access = self.import_module("app.access", allowed_user_ids="100,200")
 
-        self.assertTrue(bot.is_user_allowed(100))
-        self.assertFalse(bot.is_user_allowed(300))
-        self.assertFalse(bot.is_user_allowed(None))
+        self.assertTrue(access.is_user_allowed(100))
+        self.assertFalse(access.is_user_allowed(300))
+        self.assertFalse(access.is_user_allowed(None))
 
     def test_reject_unauthorized_replies_and_returns_true(self):
-        bot = self.load_bot(allowed_user_ids="100")
+        access = self.import_module("app.access", allowed_user_ids="100")
         replies = []
 
         async def reply_text(text):
@@ -119,11 +125,11 @@ class BotHelperTests(unittest.TestCase):
             message=SimpleNamespace(reply_text=reply_text),
         )
 
-        self.assertTrue(asyncio.run(bot.reject_unauthorized(update)))
+        self.assertTrue(asyncio.run(access.reject_unauthorized(update)))
         self.assertEqual(replies, ["Доступ к этому боту ограничен."])
 
     def test_reject_unauthorized_returns_false_for_allowed_user(self):
-        bot = self.load_bot(allowed_user_ids="100")
+        access = self.import_module("app.access", allowed_user_ids="100")
         replies = []
 
         async def reply_text(text):
@@ -134,21 +140,31 @@ class BotHelperTests(unittest.TestCase):
             message=SimpleNamespace(reply_text=reply_text),
         )
 
-        self.assertFalse(asyncio.run(bot.reject_unauthorized(update)))
+        self.assertFalse(asyncio.run(access.reject_unauthorized(update)))
         self.assertEqual(replies, [])
 
     def test_trim_document_text_strips_and_marks_truncation(self):
-        bot = self.load_bot()
-        bot.MAX_DOCUMENT_CHARS = 5
+        documents = self.import_module("app.documents")
 
-        self.assertEqual(bot.trim_document_text("  abc  "), ("abc", False))
-        self.assertEqual(bot.trim_document_text("abcdef"), ("abcde", True))
+        self.assertEqual(
+            documents.trim_document_text("  abc  ", max_chars=5),
+            ("abc", False),
+        )
+        self.assertEqual(
+            documents.trim_document_text("abcdef", max_chars=5),
+            ("abcde", True),
+        )
 
     def test_get_command_text_removes_command_prefix(self):
-        bot = self.load_bot()
+        handlers = self.import_module("app.handlers")
         update = SimpleNamespace(message=SimpleNamespace(text="/email hello"))
 
-        self.assertEqual(bot.get_command_text(update, "email"), "hello")
+        self.assertEqual(handlers.get_command_text(update, "email"), "hello")
+
+    def test_bot_module_exposes_thin_entrypoint(self):
+        bot = self.import_module("bot")
+
+        self.assertTrue(callable(bot.main))
 
 
 if __name__ == "__main__":

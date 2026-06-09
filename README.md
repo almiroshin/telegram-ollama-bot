@@ -2,7 +2,7 @@
 
 A local Telegram bot powered by Ollama. It works as a personal AI assistant with business-oriented prompt modes, voice transcription, document analysis, and OCR for scanned PDFs.
 
-The project is currently implemented as a compact Python application in [bot.py](bot.py). Telegram is the user interface, Ollama provides the local LLM backend, `faster-whisper` handles speech-to-text, and Tesseract/Poppler are used for OCR and PDF processing.
+The project is implemented as a small Python application with [bot.py](bot.py) as the entry point and the main runtime code split across the [app](app) package. Telegram is the user interface, Ollama provides the local LLM backend, `faster-whisper` handles speech-to-text, and Tesseract/Poppler are used for OCR and PDF processing.
 
 ## Features
 
@@ -107,7 +107,7 @@ A complete example is available in [.env.example](.env.example).
 Check Python syntax without writing bytecode cache:
 
 ```bash
-python3 -c 'import ast, pathlib; ast.parse(pathlib.Path("bot.py").read_text())'
+python3 -c 'import ast, pathlib; [ast.parse(path.read_text()) for path in pathlib.Path(".").glob("app/*.py")]; ast.parse(pathlib.Path("bot.py").read_text())'
 ```
 
 Check Ollama:
@@ -132,11 +132,10 @@ After starting the bot, send this command in Telegram:
 
 - Conversation history is stored in memory and is lost after restart.
 - Access control is disabled unless `ALLOWED_TELEGRAM_USER_IDS` is set.
-- `bot.py` currently contains all layers: configuration, Telegram handlers, LLM client, STT, document parsing, and OCR.
+- The application has a modular baseline, but runtime history is still in memory and heavy work still runs inside Telegram handlers.
 - Documents longer than `MAX_DOCUMENT_CHARS` are truncated; RAG/document indexing is not implemented yet.
 - Automated tests currently cover helper logic only; Telegram/Ollama integration tests are not implemented yet.
-- Raw exception messages are returned to users in some error paths.
 
 ## Recommended Next Step
 
-Set `ALLOWED_TELEGRAM_USER_IDS` in production and split the application into modules. This reduces the main operational risk and makes future work easier: persistent memory, background queues for heavy tasks, document RAG, and broader tests.
+Set `ALLOWED_TELEGRAM_USER_IDS` in production, then add persistent memory. This gives the bot a safer baseline before RAG, queues, and richer document workflows.

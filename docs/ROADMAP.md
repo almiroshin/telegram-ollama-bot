@@ -33,35 +33,33 @@ Readiness criteria:
 
 Goal: stop `bot.py` from becoming the whole application and separate domain logic from Telegram handlers.
 
-Suggested structure:
+Current structure:
 
 ```text
 app/
   config.py
+  access.py
   prompts.py
   llm.py
-  history.py
-  telegram_handlers.py
+  handlers.py
   stt.py
   documents.py
-  ocr.py
-  errors.py
 tests/
 ```
 
 Tasks:
 
-- Move environment configuration into typed settings.
-- Move prompts into a separate module.
-- Extract the Ollama client.
-- Extract document handling and STT.
-- Add unit tests that do not require real Telegram or Ollama.
+- Move environment configuration into typed settings. Done.
+- Move prompts into a separate module. Done.
+- Extract the Ollama client. Done.
+- Extract document handling and STT. Done.
+- Add unit tests that do not require real Telegram or Ollama. Started.
 
 Readiness criteria:
 
-- `bot.py` is only a thin entry point;
-- document parsing can be tested independently;
-- the LLM client can be mocked.
+- `bot.py` is only a thin entry point. Done.
+- document parsing can be tested independently. Started.
+- the LLM client can be mocked. Started.
 
 ## Phase 2. Persistent Memory
 
@@ -178,8 +176,8 @@ Readiness criteria:
 
 ## Next Sprint Priorities
 
-1. Modular `app/` structure.
+1. Persistent history storage.
 2. More unit tests for document extraction, prompt mode routing, and error paths.
 3. Robust retry/backoff for Ollama, STT, and OCR.
-4. Persistent history storage.
-5. Background queue for OCR/STT workloads.
+4. Background queue for OCR/STT workloads.
+5. Document RAG planning.

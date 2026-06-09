@@ -49,7 +49,7 @@ log "Installing Python dependencies"
 "$PYTHON_BIN" -m pip install -r requirements.txt
 
 log "Checking Python syntax"
-"$PYTHON_BIN" -m py_compile bot.py
+"$PYTHON_BIN" -m py_compile bot.py app/*.py
 
 if [[ ! -f "$PLIST_PATH" ]]; then
   fail "launchd plist not found: $PLIST_PATH"

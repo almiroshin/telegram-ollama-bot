@@ -41,7 +41,7 @@ The script will:
 1. Refuse to continue if the working tree has local changes.
 2. Fetch and fast-forward `main` from GitHub.
 3. Install dependencies from `requirements.txt`.
-4. Compile-check `bot.py`.
+4. Compile-check `bot.py` and the `app/` modules.
 5. Restart the launchd service.
 6. Print deployment status and recent logs.
 
