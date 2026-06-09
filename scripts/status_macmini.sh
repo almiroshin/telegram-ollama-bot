@@ -72,6 +72,18 @@ printf 'HISTORY_DB_PATH: %s\n' "$HISTORY_DB_PATH"
 
 if [[ -f "$HISTORY_DB_PATH" ]]; then
   wc -c "$HISTORY_DB_PATH"
+  if command -v sqlite3 >/dev/null 2>&1; then
+    if sqlite3 "$HISTORY_DB_PATH" \
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='users';" \
+      | grep -qx "users"; then
+      sqlite3 "$HISTORY_DB_PATH" \
+        "SELECT status || ': ' || COUNT(*) FROM users GROUP BY status ORDER BY status;"
+    else
+      printf 'Managed users table not found yet.\n'
+    fi
+  else
+    printf 'sqlite3 command not found; skipping managed user counts.\n'
+  fi
 else
   printf 'History database not found yet.\n'
 fi

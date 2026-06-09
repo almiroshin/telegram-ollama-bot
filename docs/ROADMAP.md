@@ -17,6 +17,7 @@ The project is a working personal prototype. Core workflows are already availabl
 Goal: make the current bot safer and easier to reproduce without a major rewrite.
 
 - Add a Telegram user allowlist. Done in the first Phase 0 increment.
+- Add owner-managed access requests and approvals. Done.
 - Hide low-level errors from normal user responses and write details to logs. Started in the first Phase 0 increment.
 - Replace `print` with `logging`. Done in the first Phase 0 increment.
 - Keep `README`, `.env.example`, `requirements.txt`, and operations documentation up to date.
@@ -70,6 +71,7 @@ Options:
 
 - SQLite for message history and user settings. Started for message history.
 - A simple `messages` table with `user_id`, `role`, `content`, and `created_at`. Done.
+- A simple `users` table with access status, role, and approval metadata. Done.
 - Commands such as `/history`, `/reset`, and later `/memory`.
 
 Tasks:
@@ -82,6 +84,7 @@ Tasks:
 Readiness criteria:
 
 - process restart does not erase history. Done for conversation messages.
+- process restart does not erase approved users. Done through SQLite user management.
 - users can clear their own history. Done through `/reset`.
 - database size is controlled. Started through `MAX_HISTORY_MESSAGES` trimming.
 
@@ -167,7 +170,7 @@ Readiness criteria:
 - Dockerfile and docker-compose.
 - Image attachments as first-class input.
 - Support for `.xlsx`, `.pptx`, and `.rtf`.
-- Role separation: owner/admin/user.
+- Role separation: owner/admin/user. Started with owner-managed access; admin permissions are not exposed yet.
 - Per-user rate limiting.
 - Automatic summarization of long history.
 - Calendar or task tracker integration.

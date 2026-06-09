@@ -8,6 +8,7 @@ The project is implemented as a small Python application with [bot.py](bot.py) a
 
 - Local text chat through the Ollama Chat API.
 - Per-user short-term conversation history persisted in SQLite.
+- Owner-managed access requests and SQLite-backed user approvals.
 - Built-in prompt modes:
   - `/email` - draft a business email.
   - `/rewrite` - rewrite and improve text.
@@ -22,6 +23,12 @@ The project is implemented as a small Python application with [bot.py](bot.py) a
   - `/model` - show the current Ollama model.
   - `/reset` - clear the current user's chat history.
   - `/myid` - show the current Telegram user ID.
+  - `/request_access` - request access from the bot owner.
+- Owner commands:
+  - `/users` - list owners and managed users.
+  - `/approve <telegram_id>` - approve a pending user.
+  - `/deny <telegram_id>` - deny a pending user.
+  - `/revoke <telegram_id>` - revoke an approved user.
 - Voice messages with local transcription through `faster-whisper`.
 - Document analysis for `.txt`, `.md`, `.pdf`, and `.docx`.
 - OCR fallback for PDFs without a text layer.
@@ -84,11 +91,12 @@ Main environment variables:
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `TELEGRAM_TOKEN` | none | Telegram bot token. Required. |
-| `ALLOWED_TELEGRAM_USER_IDS` | empty | Comma or space separated Telegram user IDs. Empty means access control is disabled. |
+| `OWNER_TELEGRAM_USER_IDS` | empty | Comma or space separated Telegram user IDs that can approve, deny, revoke, and list users. |
+| `ALLOWED_TELEGRAM_USER_IDS` | empty | Legacy/bootstrap allowlist. If owners are not configured, these users are treated as owners for compatibility. |
 | `OLLAMA_URL` | `http://127.0.0.1:11434/api/chat` | Ollama Chat API endpoint. |
 | `OLLAMA_MODEL` | `qwen3:8b` | Ollama model name. |
 | `MAX_HISTORY_MESSAGES` | `12` | Number of recent messages kept in active context and retained per user. |
-| `HISTORY_DB_PATH` | `bot.sqlite` | SQLite database path for conversation history. |
+| `HISTORY_DB_PATH` | `bot.sqlite` | SQLite database path for conversation history and managed users. |
 | `LOG_LEVEL` | `INFO` | Python logging level. |
 | `WHISPER_MODEL_SIZE` | `small` | `faster-whisper` model size. |
 | `WHISPER_DEVICE` | `cpu` | STT device: `cpu`, `cuda`, or `auto`. |
@@ -129,10 +137,21 @@ After starting the bot, send this command in Telegram:
 /status
 ```
 
+## Access Management
+
+For production, set `OWNER_TELEGRAM_USER_IDS` in `.env`. Unknown users can send `/start` or `/request_access`; the bot stores a pending request and sends the owner approval commands:
+
+```text
+/approve <telegram_id>
+/deny <telegram_id>
+```
+
+Approved users are stored in SQLite and can use the bot without changing `.env`. Owners remain configured in `.env`, so they cannot be revoked accidentally through Telegram commands.
+
 ## Current Limitations
 
 - Conversation history is persisted in SQLite, but there is no `/history` inspection command yet.
-- Access control is disabled unless `ALLOWED_TELEGRAM_USER_IDS` is set.
+- Access control is disabled unless `OWNER_TELEGRAM_USER_IDS` or the legacy `ALLOWED_TELEGRAM_USER_IDS` is set.
 - Heavy OCR/STT work still runs inside Telegram handlers.
 - Documents longer than `MAX_DOCUMENT_CHARS` are truncated; RAG/document indexing is not implemented yet.
 - Automated tests currently cover helper logic only; Telegram/Ollama integration tests are not implemented yet.

@@ -6,7 +6,7 @@ import sys
 from dataclasses import dataclass
 
 
-def parse_allowed_user_ids(raw_value: str) -> set[int]:
+def parse_telegram_user_ids(raw_value: str, variable_name: str) -> set[int]:
     user_ids = set()
 
     for token in raw_value.replace(",", " ").split():
@@ -14,7 +14,7 @@ def parse_allowed_user_ids(raw_value: str) -> set[int]:
             user_id = int(token)
         except ValueError as exc:
             raise ValueError(
-                f"Invalid Telegram user ID in ALLOWED_TELEGRAM_USER_IDS: {token}"
+                f"Invalid Telegram user ID in {variable_name}: {token}"
             ) from exc
 
         if user_id <= 0:
@@ -27,6 +27,10 @@ def parse_allowed_user_ids(raw_value: str) -> set[int]:
     return user_ids
 
 
+def parse_allowed_user_ids(raw_value: str) -> set[int]:
+    return parse_telegram_user_ids(raw_value, "ALLOWED_TELEGRAM_USER_IDS")
+
+
 @dataclass(frozen=True)
 class Settings:
     telegram_token: str | None
@@ -34,6 +38,7 @@ class Settings:
     ollama_model: str
     max_history_messages: int
     history_db_path: str
+    owner_telegram_user_ids: set[int]
     allowed_telegram_user_ids: set[int]
     log_level: str
     whisper_model_size: str
@@ -55,6 +60,10 @@ def load_settings() -> Settings:
         ollama_model=os.getenv("OLLAMA_MODEL", "qwen3:8b"),
         max_history_messages=int(os.getenv("MAX_HISTORY_MESSAGES", "12")),
         history_db_path=os.getenv("HISTORY_DB_PATH", "bot.sqlite"),
+        owner_telegram_user_ids=parse_telegram_user_ids(
+            os.getenv("OWNER_TELEGRAM_USER_IDS", ""),
+            "OWNER_TELEGRAM_USER_IDS",
+        ),
         allowed_telegram_user_ids=parse_allowed_user_ids(
             os.getenv("ALLOWED_TELEGRAM_USER_IDS", "")
         ),

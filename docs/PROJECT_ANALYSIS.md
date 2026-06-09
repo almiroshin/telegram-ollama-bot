@@ -26,8 +26,8 @@ This project is a personal local AI assistant exposed through Telegram. It alrea
 | PDF | Available | Direct text extraction through `pypdf`. |
 | PDF OCR | Available | `pdf2image` + Tesseract. |
 | DOCX | Available | Paragraphs and tables. |
-| User access control | Available | `ALLOWED_TELEGRAM_USER_IDS`; disabled when empty. |
-| Persistence | Partial | Conversation history persists; user settings and long-term memory are not implemented. |
+| User access control | Available | Owner-managed requests and SQLite-backed approvals. |
+| Persistence | Partial | Conversation history and managed users persist; long-term memory is not implemented. |
 | Tests | Partial | Helper-level `unittest` coverage exists; integration tests are still missing. |
 | RAG | Missing | Long documents are currently truncated. |
 
@@ -40,11 +40,11 @@ This project is a personal local AI assistant exposed through Telegram. It alrea
 
 ## Main Risks
 
-### 1. No Access Control
+### 1. Access Control Must Be Configured
 
-Anyone who can message the bot can use the local LLM and document processing capabilities if `ALLOWED_TELEGRAM_USER_IDS` is left empty. For a personal bot, this is the highest operational risk.
+Anyone who can message the bot can use the local LLM and document processing capabilities if both `OWNER_TELEGRAM_USER_IDS` and the legacy `ALLOWED_TELEGRAM_USER_IDS` are left empty. For a personal bot, this is the highest operational risk.
 
-Recommendation: set `ALLOWED_TELEGRAM_USER_IDS` in production and keep `/myid` available for discovering Telegram IDs.
+Recommendation: set `OWNER_TELEGRAM_USER_IDS` in production. Use `/request_access`, `/approve`, `/deny`, `/revoke`, and `/users` for day-to-day access management.
 
 ### 2. Persistent Memory Is Still Minimal
 
@@ -81,6 +81,7 @@ app/
   llm.py
   history.py
   access.py
+  users.py
   handlers.py
   stt.py
   documents.py
@@ -95,14 +96,15 @@ Minimum refactoring sequence:
 
 1. Keep `requirements.txt`, `.env.example`, and documentation current.
 2. Add a user allowlist without changing the overall structure. Done.
-3. Move pure document parsing functions into a separate module. Done.
-4. Add tests for helper functions. Started.
-5. Extract the Ollama client and Telegram handlers. Done.
-6. Add SQLite-backed conversation history. Done.
+3. Add owner-managed user approvals. Done.
+4. Move pure document parsing functions into a separate module. Done.
+5. Add tests for helper functions. Started.
+6. Extract the Ollama client and Telegram handlers. Done.
+7. Add SQLite-backed conversation history. Done.
 
 ## Near-Term Technical Tasks
 
-- Set `ALLOWED_TELEGRAM_USER_IDS` in production.
+- Set `OWNER_TELEGRAM_USER_IDS` in production.
 - Add a proper logger.
 - Add `.env` loading through `python-dotenv` or explicitly document shell export.
 - Add user-facing history inspection and long-term memory controls.

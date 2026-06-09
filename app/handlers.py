@@ -8,11 +8,27 @@ import httpx
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from app.access import get_update_user_id, reject_unauthorized
+from app.access import (
+    get_owner_telegram_user_ids,
+    get_update_user_id,
+    is_access_control_configured,
+    is_owner,
+    is_user_allowed,
+    reject_non_owner,
+    reject_unauthorized,
+)
 from app.config import SETTINGS
 from app.documents import extract_text_from_file, trim_document_text
 from app.llm import ask_ollama, reset_user_history
 from app.stt import transcribe_audio_file
+from app.users import (
+    ACTIVE_STATUS,
+    BLOCKED_STATUS,
+    PENDING_STATUS,
+    USER_REPOSITORY,
+    USER_ROLE,
+    ManagedUser,
+)
 
 
 LOGGER = logging.getLogger("telegram_ollama_bot")
@@ -23,11 +39,159 @@ def get_command_text(update: Update, command: str) -> str:
     return text.replace(f"/{command}", "", 1).strip()
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if await reject_unauthorized(update):
+def get_effective_full_name(update: Update) -> str | None:
+    user = update.effective_user
+
+    if not user:
+        return None
+
+    full_name = getattr(user, "full_name", None)
+    if full_name:
+        return full_name
+
+    first_name = getattr(user, "first_name", None)
+    last_name = getattr(user, "last_name", None)
+    return " ".join(part for part in (first_name, last_name) if part) or None
+
+
+def format_user_identity(user: ManagedUser) -> str:
+    parts = [str(user.user_id)]
+
+    if user.username:
+        parts.append(f"@{user.username}")
+
+    if user.full_name:
+        parts.append(f"({user.full_name})")
+
+    return " ".join(parts)
+
+
+def parse_target_user_id(context: ContextTypes.DEFAULT_TYPE) -> int | None:
+    args = getattr(context, "args", None) or []
+
+    if not args:
+        return None
+
+    try:
+        user_id = int(args[0])
+    except ValueError:
+        return None
+
+    if user_id <= 0:
+        return None
+
+    return user_id
+
+
+async def notify_owners_about_access_request(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    user: ManagedUser,
+) -> None:
+    owner_ids = get_owner_telegram_user_ids()
+
+    if not owner_ids:
         return
 
-    await update.message.reply_text(
+    requester_id = get_update_user_id(update)
+    text = (
+        "New Telegram bot access request:\n\n"
+        f"User: {format_user_identity(user)}\n"
+        f"Status: {user.status}\n\n"
+        f"Approve: /approve {user.user_id}\n"
+        f"Deny: /deny {user.user_id}"
+    )
+
+    for owner_id in owner_ids:
+        if owner_id == requester_id:
+            continue
+
+        try:
+            await context.bot.send_message(chat_id=owner_id, text=text)
+        except Exception:
+            LOGGER.exception(
+                "Failed to notify owner about access request: owner_id=%s requester_id=%s",
+                owner_id,
+                requester_id,
+            )
+
+
+async def notify_user(
+    context: ContextTypes.DEFAULT_TYPE,
+    user_id: int,
+    text: str,
+) -> None:
+    try:
+        await context.bot.send_message(chat_id=user_id, text=text)
+    except Exception:
+        LOGGER.info("Could not notify Telegram user: user_id=%s", user_id)
+
+
+async def handle_access_request(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    user_id = get_update_user_id(update)
+
+    if not user_id:
+        await update.message.reply_text("Не удалось определить ваш Telegram ID.")
+        return
+
+    if is_user_allowed(user_id):
+        if not is_access_control_configured():
+            await update.message.reply_text(
+                "Доступ сейчас открыт для всех. Ваш Telegram ID: "
+                f"{user_id}"
+            )
+        else:
+            await update.message.reply_text(
+                "У вас уже есть доступ. Ваш Telegram ID: "
+                f"{user_id}"
+            )
+        return
+
+    user = USER_REPOSITORY.request_access(
+        user_id=user_id,
+        username=getattr(update.effective_user, "username", None),
+        full_name=get_effective_full_name(update),
+    )
+
+    if user.status == ACTIVE_STATUS:
+        await update.message.reply_text(
+            "У вас уже есть доступ. Ваш Telegram ID: "
+            f"{user_id}"
+        )
+        return
+
+    if user.status == BLOCKED_STATUS:
+        await update.message.reply_text(
+            "Ваш доступ был отклонен или отозван. "
+            "Обратитесь к владельцу бота.\n\n"
+            f"Ваш Telegram ID: {user_id}"
+        )
+        return
+
+    await notify_owners_about_access_request(update, context, user)
+
+    if get_owner_telegram_user_ids():
+        await update.message.reply_text(
+            "Запрос доступа отправлен владельцу бота.\n\n"
+            f"Ваш Telegram ID: {user_id}"
+        )
+    else:
+        await update.message.reply_text(
+            "Запрос доступа сохранен, но владелец бота не настроен.\n"
+            "Попросите администратора задать OWNER_TELEGRAM_USER_IDS в .env.\n\n"
+            f"Ваш Telegram ID: {user_id}"
+        )
+
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_user_allowed(get_update_user_id(update)):
+        await handle_access_request(update, context)
+        return
+
+    help_text = (
         "Я локальный AI-бот на Ollama.\n\n"
         "Команды:\n"
         "/status — статус\n"
@@ -46,9 +210,167 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Можно писать и обычным сообщением."
     )
 
+    if is_owner(get_update_user_id(update)):
+        help_text += (
+            "\n\n"
+            "Команды владельца:\n"
+            "/users — список пользователей\n"
+            "/approve <telegram_id> — выдать доступ\n"
+            "/deny <telegram_id> — отклонить запрос\n"
+            "/revoke <telegram_id> — отозвать доступ"
+        )
+
+    await update.message.reply_text(help_text)
+
+
+async def request_access(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await handle_access_request(update, context)
+
 
 async def myid(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"Ваш Telegram ID: {update.effective_user.id}")
+
+
+async def approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if await reject_non_owner(update):
+        return
+
+    target_user_id = parse_target_user_id(context)
+
+    if not target_user_id:
+        await update.message.reply_text(
+            "Использование: /approve <telegram_id>"
+        )
+        return
+
+    owner_id = get_update_user_id(update)
+    user = USER_REPOSITORY.approve_user(
+        user_id=target_user_id,
+        approved_by=owner_id,
+        role=USER_ROLE,
+    )
+
+    LOGGER.info(
+        "Telegram user approved: user_id=%s role=%s approved_by=%s",
+        target_user_id,
+        USER_ROLE,
+        owner_id,
+    )
+    await update.message.reply_text(
+        f"Доступ выдан: {format_user_identity(user)} — {user.role}."
+    )
+    await notify_user(
+        context,
+        target_user_id,
+        "Ваш доступ к Telegram Ollama Bot одобрен. Отправьте /start.",
+    )
+
+
+async def deny(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if await reject_non_owner(update):
+        return
+
+    target_user_id = parse_target_user_id(context)
+
+    if not target_user_id:
+        await update.message.reply_text("Использование: /deny <telegram_id>")
+        return
+
+    if is_owner(target_user_id):
+        await update.message.reply_text("Нельзя отклонить владельца из .env.")
+        return
+
+    owner_id = get_update_user_id(update)
+    user = USER_REPOSITORY.block_user(
+        user_id=target_user_id,
+        blocked_by=owner_id,
+    )
+
+    LOGGER.info(
+        "Telegram user denied: user_id=%s denied_by=%s",
+        target_user_id,
+        owner_id,
+    )
+    await update.message.reply_text(
+        f"Запрос отклонен: {format_user_identity(user)}."
+    )
+    await notify_user(
+        context,
+        target_user_id,
+        "Ваш запрос доступа к Telegram Ollama Bot отклонен.",
+    )
+
+
+async def revoke(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if await reject_non_owner(update):
+        return
+
+    target_user_id = parse_target_user_id(context)
+
+    if not target_user_id:
+        await update.message.reply_text("Использование: /revoke <telegram_id>")
+        return
+
+    if is_owner(target_user_id):
+        await update.message.reply_text("Нельзя отозвать владельца из .env.")
+        return
+
+    owner_id = get_update_user_id(update)
+    user = USER_REPOSITORY.block_user(
+        user_id=target_user_id,
+        blocked_by=owner_id,
+    )
+
+    LOGGER.info(
+        "Telegram user revoked: user_id=%s revoked_by=%s",
+        target_user_id,
+        owner_id,
+    )
+    await update.message.reply_text(
+        f"Доступ отозван: {format_user_identity(user)}."
+    )
+    await notify_user(
+        context,
+        target_user_id,
+        "Ваш доступ к Telegram Ollama Bot отозван.",
+    )
+
+
+async def users(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if await reject_non_owner(update):
+        return
+
+    owner_ids = sorted(get_owner_telegram_user_ids())
+    users_list = USER_REPOSITORY.list_users()
+
+    lines = ["Пользователи:"]
+
+    if owner_ids:
+        lines.append("")
+        lines.append("Owners from .env:")
+        lines.extend(f"- {owner_id}" for owner_id in owner_ids)
+
+    lines.append("")
+    lines.append("Managed users in SQLite:")
+
+    if users_list:
+        for user in users_list:
+            lines.append(
+                f"- {format_user_identity(user)} — {user.status}/{user.role}"
+            )
+    else:
+        lines.append("- none")
+
+    counts = USER_REPOSITORY.count_by_status()
+    lines.append("")
+    lines.append(
+        "Counts: "
+        f"pending={counts[PENDING_STATUS]}, "
+        f"active={counts[ACTIVE_STATUS]}, "
+        f"blocked={counts[BLOCKED_STATUS]}"
+    )
+
+    await update.message.reply_text("\n".join(lines))
 
 
 async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -84,11 +406,16 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             response.raise_for_status()
 
+        counts = USER_REPOSITORY.count_by_status()
         await update.message.reply_text(
             "Статус: работает\n"
             f"Модель: {SETTINGS.ollama_model}\n"
             f"Ollama URL: {SETTINGS.ollama_url}\n"
             f"History DB: {SETTINGS.history_db_path}\n"
+            f"Access: owners={len(get_owner_telegram_user_ids())}, "
+            f"pending={counts[PENDING_STATUS]}, "
+            f"active={counts[ACTIVE_STATUS]}, "
+            f"blocked={counts[BLOCKED_STATUS]}\n"
             f"Whisper: {SETTINGS.whisper_model_size}, "
             f"{SETTINGS.whisper_device}, {SETTINGS.whisper_compute_type}\n"
             f"Файлы: лимит {SETTINGS.max_file_size_mb} MB, "

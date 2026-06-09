@@ -62,6 +62,7 @@ The script prints:
 - launchd load status.
 - running bot process.
 - local Ollama availability.
+- history database size and managed user counts.
 - recent stdout and stderr logs.
 
 ## Bot Runtime
@@ -111,7 +112,7 @@ Minimum required value:
 
 ```text
 TELEGRAM_TOKEN=...
-ALLOWED_TELEGRAM_USER_IDS=...
+OWNER_TELEGRAM_USER_IDS=...
 ```
 
 Common Mac mini values:
@@ -124,6 +125,8 @@ LOG_LEVEL=INFO
 POPPLER_PATH=/opt/homebrew/bin
 TESSERACT_CMD=/opt/homebrew/bin/tesseract
 ```
+
+Approved Telegram users are stored in the SQLite database configured by `HISTORY_DB_PATH`. Owners stay in `.env`; use `/approve`, `/deny`, `/revoke`, and `/users` in Telegram for day-to-day user management.
 
 ## Custom Paths
 

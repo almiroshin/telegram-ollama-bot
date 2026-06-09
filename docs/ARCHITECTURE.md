@@ -10,8 +10,10 @@ The project implements a personal Telegram assistant backed by a local Ollama mo
 flowchart LR
     U["Telegram user"] --> TG["Telegram Bot API"]
     TG --> H["python-telegram-bot handlers"]
+    H --> A["Access control"]
+    A --> DB
     H --> M["Prompt modes and chat history"]
-    M --> DB["SQLite history database"]
+    M --> DB["SQLite database"]
     M --> O["Ollama Chat API"]
     O --> M
     H --> V["faster-whisper STT"]
@@ -50,6 +52,7 @@ app/
   main.py
   prompts.py
   stt.py
+  users.py
 tests/
 ```
 
@@ -58,8 +61,9 @@ Responsibilities:
 - `bot.py` - stable launchd-compatible entry point.
 - `app/config.py` - environment parsing, typed settings, logging setup.
 - `app/prompts.py` - system prompts and prompt modes.
-- `app/access.py` - Telegram user allowlist.
+- `app/access.py` - Telegram owner checks and access decisions.
 - `app/history.py` - SQLite-backed conversation history repository.
+- `app/users.py` - SQLite-backed managed user repository.
 - `app/llm.py` - Ollama Chat API client and history orchestration.
 - `app/stt.py` - `faster-whisper` model loading and transcription.
 - `app/documents.py` - text extraction from TXT/MD/PDF/DOCX and OCR fallback.
@@ -84,6 +88,36 @@ messages(id, user_id, role, content, created_at)
 ```
 
 After each successful response, the user's persisted history is trimmed to `MAX_HISTORY_MESSAGES`.
+
+## Access Request Flow
+
+Owners are configured through `OWNER_TELEGRAM_USER_IDS`. The legacy `ALLOWED_TELEGRAM_USER_IDS` is still supported as a direct allowlist and as an owner fallback when no owners are configured.
+
+Managed users are stored in the same SQLite database:
+
+```text
+users(
+  user_id,
+  username,
+  full_name,
+  role,
+  status,
+  created_at,
+  updated_at,
+  approved_at,
+  approved_by,
+  blocked_at,
+  blocked_by
+)
+```
+
+Flow:
+
+1. An unknown Telegram user sends `/start` or `/request_access`.
+2. The bot stores or refreshes a `pending` user row.
+3. The bot sends owners a short approval message with `/approve <telegram_id>` and `/deny <telegram_id>`.
+4. An owner approves, denies, revokes, or lists users through Telegram commands.
+5. Active users can use normal bot commands; blocked and pending users cannot.
 
 ## Voice Messages
 
@@ -125,7 +159,7 @@ The code now has a modular baseline and SQLite-backed short-term history. The ne
 
 ## Main Technical Risks
 
-- Telegram user access control is disabled unless `ALLOWED_TELEGRAM_USER_IDS` is set.
+- Telegram user access control is disabled unless `OWNER_TELEGRAM_USER_IDS` or the legacy `ALLOWED_TELEGRAM_USER_IDS` is set.
 - Conversation history is persistent, but there is no user-facing history inspection command yet.
 - Heavy OCR/STT work is executed inside handlers and can delay processing.
 - Test coverage is still helper-level and does not cover Telegram/Ollama integration.

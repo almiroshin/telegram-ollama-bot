@@ -89,11 +89,12 @@ For the current `OCR_LANG=rus+eng`, the list should contain `rus` and `eng`.
 ### Telegram And LLM
 
 - `TELEGRAM_TOKEN` - required bot token.
-- `ALLOWED_TELEGRAM_USER_IDS` - comma or space separated Telegram user IDs allowed to use the bot. Empty means access control is disabled.
+- `OWNER_TELEGRAM_USER_IDS` - comma or space separated Telegram user IDs allowed to manage access through owner commands.
+- `ALLOWED_TELEGRAM_USER_IDS` - legacy/bootstrap allowlist. If owners are not configured, these users are treated as owners for compatibility.
 - `OLLAMA_URL` - chat endpoint, usually `http://127.0.0.1:11434/api/chat`.
 - `OLLAMA_MODEL` - model name, for example `qwen3:8b`, `llama3.1:8b`, or `mistral`.
 - `MAX_HISTORY_MESSAGES` - number of recent messages kept in context.
-- `HISTORY_DB_PATH` - SQLite database path for conversation history, default `bot.sqlite`.
+- `HISTORY_DB_PATH` - SQLite database path for conversation history and managed users, default `bot.sqlite`.
 - `LOG_LEVEL` - Python logging level, usually `INFO`.
 
 ### Voice
@@ -129,19 +130,34 @@ Practical tuning:
 
 ## Security
 
-The bot supports a Telegram user allowlist through `ALLOWED_TELEGRAM_USER_IDS`. Before running the bot outside a personal environment, set it explicitly.
+The bot supports owner-managed Telegram access control. Before running the bot outside a personal environment, set at least one owner explicitly.
 
 Recommended configuration:
 
 ```text
-ALLOWED_TELEGRAM_USER_IDS=123,456
+OWNER_TELEGRAM_USER_IDS=123
 ```
 
 Expected behavior:
 
-- reject commands and messages from unknown users;
+- reject work commands and messages from unknown users;
+- allow unknown users to send `/request_access`;
+- notify owners about pending access requests;
+- let owners approve, deny, revoke, and list managed users from Telegram;
 - do not expose configuration to unknown users;
 - do not send stack traces or low-level errors to users.
+
+User management commands:
+
+```text
+/request_access
+/users
+/approve <telegram_id>
+/deny <telegram_id>
+/revoke <telegram_id>
+```
+
+Owners are configured only through `.env`; approved users are stored in the SQLite database configured by `HISTORY_DB_PATH`. The legacy `ALLOWED_TELEGRAM_USER_IDS` variable still grants direct access and is used as an owner fallback only when `OWNER_TELEGRAM_USER_IDS` is empty.
 
 Do not commit `.env`; it is already ignored in [.gitignore](../.gitignore).
 

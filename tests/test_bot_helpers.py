@@ -74,7 +74,7 @@ def clear_app_modules():
 
 
 class BotHelperTests(unittest.TestCase):
-    def import_module(self, module_name, allowed_user_ids=""):
+    def import_module(self, module_name, allowed_user_ids="", owner_user_ids=""):
         clear_app_modules()
         tempdir = tempfile.TemporaryDirectory()
         self.addCleanup(tempdir.cleanup)
@@ -84,6 +84,7 @@ class BotHelperTests(unittest.TestCase):
                 os.environ,
                 {
                     "ALLOWED_TELEGRAM_USER_IDS": allowed_user_ids,
+                    "OWNER_TELEGRAM_USER_IDS": owner_user_ids,
                     "HISTORY_DB_PATH": os.path.join(tempdir.name, "history.sqlite"),
                     "LOG_LEVEL": "CRITICAL",
                 },
@@ -104,6 +105,12 @@ class BotHelperTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "abc"):
             config.parse_allowed_user_ids("123,abc")
 
+    def test_parse_telegram_user_ids_reports_variable_name(self):
+        config = self.import_module("app.config")
+
+        with self.assertRaisesRegex(ValueError, "OWNER_TELEGRAM_USER_IDS"):
+            config.parse_telegram_user_ids("abc", "OWNER_TELEGRAM_USER_IDS")
+
     def test_is_user_allowed_allows_everyone_when_allowlist_is_empty(self):
         access = self.import_module("app.access")
 
@@ -116,6 +123,31 @@ class BotHelperTests(unittest.TestCase):
         self.assertTrue(access.is_user_allowed(100))
         self.assertFalse(access.is_user_allowed(300))
         self.assertFalse(access.is_user_allowed(None))
+
+    def test_owner_ids_fall_back_to_legacy_allowlist(self):
+        access = self.import_module("app.access", allowed_user_ids="100,200")
+
+        self.assertEqual(access.get_owner_telegram_user_ids(), {100, 200})
+        self.assertTrue(access.is_owner(100))
+
+    def test_owner_ids_prefer_owner_env_when_configured(self):
+        access = self.import_module(
+            "app.access",
+            allowed_user_ids="100",
+            owner_user_ids="900",
+        )
+
+        self.assertEqual(access.get_owner_telegram_user_ids(), {900})
+        self.assertTrue(access.is_owner(900))
+        self.assertFalse(access.is_owner(100))
+        self.assertTrue(access.is_user_allowed(100))
+
+    def test_is_user_allowed_accepts_active_database_user(self):
+        access = self.import_module("app.access", owner_user_ids="100")
+
+        access.USER_REPOSITORY.approve_user(300, approved_by=100)
+
+        self.assertTrue(access.is_user_allowed(300))
 
     def test_reject_unauthorized_replies_and_returns_true(self):
         access = self.import_module("app.access", allowed_user_ids="100")
@@ -130,7 +162,13 @@ class BotHelperTests(unittest.TestCase):
         )
 
         self.assertTrue(asyncio.run(access.reject_unauthorized(update)))
-        self.assertEqual(replies, ["Доступ к этому боту ограничен."])
+        self.assertEqual(
+            replies,
+            [
+                "Доступ к этому боту ограничен.\n"
+                "Отправьте /request_access, чтобы запросить доступ."
+            ],
+        )
 
     def test_reject_unauthorized_returns_false_for_allowed_user(self):
         access = self.import_module("app.access", allowed_user_ids="100")
@@ -146,6 +184,21 @@ class BotHelperTests(unittest.TestCase):
 
         self.assertFalse(asyncio.run(access.reject_unauthorized(update)))
         self.assertEqual(replies, [])
+
+    def test_reject_non_owner_replies_and_returns_true(self):
+        access = self.import_module("app.access", owner_user_ids="100")
+        replies = []
+
+        async def reply_text(text):
+            replies.append(text)
+
+        update = SimpleNamespace(
+            effective_user=SimpleNamespace(id=200, username="regular"),
+            message=SimpleNamespace(reply_text=reply_text),
+        )
+
+        self.assertTrue(asyncio.run(access.reject_non_owner(update)))
+        self.assertEqual(replies, ["Эта команда доступна только владельцу бота."])
 
     def test_trim_document_text_strips_and_marks_truncation(self):
         documents = self.import_module("app.documents")
@@ -190,6 +243,45 @@ class BotHelperTests(unittest.TestCase):
             repository.clear_user_history(100)
 
             self.assertEqual(repository.get_recent_messages(100, 10), [])
+
+    def test_sqlite_user_repository_manages_access_lifecycle(self):
+        users = self.import_module("app.users")
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            repository = users.SQLiteUserRepository(
+                os.path.join(tempdir, "users.sqlite")
+            )
+
+            requested = repository.request_access(
+                200,
+                username="new_user",
+                full_name="New User",
+            )
+
+            self.assertEqual(requested.status, users.PENDING_STATUS)
+            self.assertFalse(repository.is_active_user(200))
+
+            approved = repository.approve_user(200, approved_by=100)
+
+            self.assertEqual(approved.status, users.ACTIVE_STATUS)
+            self.assertTrue(repository.is_active_user(200))
+
+            blocked = repository.block_user(200, blocked_by=100)
+
+            self.assertEqual(blocked.status, users.BLOCKED_STATUS)
+            self.assertFalse(repository.is_active_user(200))
+            self.assertEqual(repository.count_by_status()[users.BLOCKED_STATUS], 1)
+
+    def test_parse_target_user_id(self):
+        handlers = self.import_module("app.handlers")
+
+        self.assertEqual(
+            handlers.parse_target_user_id(SimpleNamespace(args=["123"])),
+            123,
+        )
+        self.assertIsNone(
+            handlers.parse_target_user_id(SimpleNamespace(args=["abc"]))
+        )
 
     def test_get_command_text_removes_command_prefix(self):
         handlers = self.import_module("app.handlers")

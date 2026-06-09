@@ -4,6 +4,8 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
 from app.config import SETTINGS, configure_logging
 from app.handlers import (
+    approve,
+    deny,
     email,
     followup,
     handle_document,
@@ -11,13 +13,16 @@ from app.handlers import (
     handle_voice,
     model,
     myid,
+    request_access,
     reset,
     rewrite,
+    revoke,
     shell,
     shorten,
     start,
     status,
     surf,
+    users,
     vip,
 )
 
@@ -34,6 +39,7 @@ def main():
     LOGGER.info("OLLAMA_MODEL: %s", SETTINGS.ollama_model)
     LOGGER.info("MAX_HISTORY_MESSAGES: %s", SETTINGS.max_history_messages)
     LOGGER.info("HISTORY_DB_PATH: %s", SETTINGS.history_db_path)
+    LOGGER.info("OWNER_USER_COUNT: %s", len(SETTINGS.owner_telegram_user_ids))
     LOGGER.info(
         "WHISPER: model=%s device=%s compute_type=%s",
         SETTINGS.whisper_model_size,
@@ -56,16 +62,24 @@ def main():
 
     if SETTINGS.allowed_telegram_user_ids:
         LOGGER.info(
-            "Access control enabled: allowed_user_count=%s",
+            "Legacy Telegram allowlist configured: allowed_user_count=%s",
             len(SETTINGS.allowed_telegram_user_ids),
         )
-    else:
-        LOGGER.warning("Access control disabled: ALLOWED_TELEGRAM_USER_IDS is empty")
+    if not SETTINGS.owner_telegram_user_ids and not SETTINGS.allowed_telegram_user_ids:
+        LOGGER.warning(
+            "Access control disabled: OWNER_TELEGRAM_USER_IDS and "
+            "ALLOWED_TELEGRAM_USER_IDS are empty"
+        )
 
     app = Application.builder().token(SETTINGS.telegram_token).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("myid", myid))
+    app.add_handler(CommandHandler("request_access", request_access))
+    app.add_handler(CommandHandler("approve", approve))
+    app.add_handler(CommandHandler("deny", deny))
+    app.add_handler(CommandHandler("revoke", revoke))
+    app.add_handler(CommandHandler("users", users))
     app.add_handler(CommandHandler("reset", reset))
     app.add_handler(CommandHandler("model", model))
     app.add_handler(CommandHandler("status", status))
