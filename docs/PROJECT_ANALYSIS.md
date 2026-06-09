@@ -156,7 +156,7 @@ Minimum refactoring sequence:
 - Add internal users and channel identities before eXpress implementation. Started.
 - Add local knowledge ingestion for vendor decks, stock exports, prior proposals, tender answers, and delivery lessons learned.
 - Add broader test coverage for document extraction, prompt routing, and external error handling.
-- Split long responses to respect Telegram message limits.
+- Split long responses to respect Telegram message limits. Done for generated text delivery.
 - Add retry/backoff for Ollama.
 - Make STT language configurable through environment variables.
 - Improve PDF handling with partial OCR: direct parsing plus OCR only for empty pages.

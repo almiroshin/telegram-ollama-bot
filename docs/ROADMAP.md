@@ -83,7 +83,7 @@ Next tasks:
 - add tests that verify every Telegram command maps to an existing prompt mode;
 - move prompts into structured files or templates;
 - add examples for common SURF scenarios: storage, servers, AI infrastructure, security, engineering systems, and modernization projects;
-- add a compact output policy for Telegram message length.
+- add a compact output policy for Telegram message length. Delivery chunking is done; prompt-level brevity rules remain.
 
 Readiness criteria:
 
@@ -204,7 +204,7 @@ Tasks:
 - limit OCR/STT/indexing concurrency;
 - add user-facing statuses: queued, processing, done, failed;
 - add timeout and cancellation policy;
-- split long Telegram responses safely;
+- split long Telegram responses safely. Done for generated text, voice, and document analysis responses.
 - add retry/backoff for Ollama and document processing.
 
 Readiness criteria:

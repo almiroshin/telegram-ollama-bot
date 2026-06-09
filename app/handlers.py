@@ -20,8 +20,10 @@ from app.access import (
 from app.assistant import (
     TELEGRAM_CHANNEL,
     AssistantRequest,
+    AssistantResponse,
     get_example_for_mode,
     handle_text_request,
+    split_text_for_delivery,
 )
 from app.config import SETTINGS
 from app.documents import extract_text_from_file, trim_document_text
@@ -124,6 +126,18 @@ def build_telegram_assistant_request(
             "full_name": get_effective_full_name(update),
         },
     )
+
+
+async def reply_text_for_delivery(message, text: str) -> None:
+    for chunk in split_text_for_delivery(text):
+        await message.reply_text(chunk)
+
+
+async def reply_assistant_response(
+    update: Update,
+    response: AssistantResponse,
+) -> None:
+    await reply_text_for_delivery(update.message, response.text)
 
 
 async def notify_owners_about_access_request(
@@ -500,7 +514,7 @@ async def handle_mode(update: Update, context: ContextTypes.DEFAULT_TYPE, mode: 
             command=mode,
         )
         response = await handle_text_request(request)
-        await update.message.reply_text(response.text)
+        await reply_assistant_response(update, response)
     except Exception:
         LOGGER.exception(
             "Ollama request failed: user_id=%s mode=%s",
@@ -601,7 +615,7 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{answer}"
         )
 
-        await update.message.reply_text(final_answer)
+        await reply_text_for_delivery(update.message, final_answer)
 
     except Exception:
         LOGGER.exception(
@@ -692,7 +706,7 @@ async def handle_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "Для полного анализа позже лучше добавить RAG/индексацию документов.\n\n"
             )
 
-        await update.message.reply_text(header + answer)
+        await reply_text_for_delivery(update.message, header + answer)
 
     except Exception:
         LOGGER.exception(
@@ -719,7 +733,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         request = build_telegram_assistant_request(update, text)
         response = await handle_text_request(request)
-        await update.message.reply_text(response.text)
+        await reply_assistant_response(update, response)
     except Exception:
         LOGGER.exception(
             "Ollama request failed: user_id=%s mode=default",

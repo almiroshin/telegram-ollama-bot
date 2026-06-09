@@ -356,6 +356,60 @@ class BotHelperTests(unittest.TestCase):
         self.assertEqual(request.text, "hello")
         self.assertEqual(response.visibility, assistant.PUBLIC_VISIBILITY)
 
+    def test_split_text_for_delivery_prefers_readable_boundaries(self):
+        assistant = self.import_module("app.assistant")
+
+        chunks = assistant.split_text_for_delivery(
+            "first paragraph\n\nsecond paragraph with more words",
+            max_chars=24,
+        )
+
+        self.assertEqual(
+            chunks,
+            ["first paragraph", "second paragraph with", "more words"],
+        )
+        self.assertEqual(
+            assistant.split_text_for_delivery("abc", max_chars=10),
+            ["abc"],
+        )
+
+        with self.assertRaisesRegex(ValueError, "max_chars"):
+            assistant.split_text_for_delivery("abc", max_chars=0)
+
+    def test_reply_text_for_delivery_sends_multiple_messages(self):
+        handlers = self.import_module("app.handlers")
+        replies = []
+
+        async def reply_text(text):
+            replies.append(text)
+
+        message = SimpleNamespace(reply_text=reply_text)
+
+        asyncio.run(
+            handlers.reply_text_for_delivery(
+                message,
+                "alpha beta gamma",
+            )
+        )
+
+        self.assertEqual(replies, ["alpha beta gamma"])
+
+        replies.clear()
+
+        with patch.object(
+            handlers,
+            "split_text_for_delivery",
+            return_value=["first", "second"],
+        ):
+            asyncio.run(
+                handlers.reply_text_for_delivery(
+                    message,
+                    "ignored",
+                )
+            )
+
+        self.assertEqual(replies, ["first", "second"])
+
     def test_build_telegram_assistant_request(self):
         handlers = self.import_module("app.handlers")
 

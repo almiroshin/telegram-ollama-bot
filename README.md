@@ -9,6 +9,7 @@ The project is implemented as a small Python application with [bot.py](bot.py) a
 - Local text chat through the Ollama Chat API.
 - Per-user short-term conversation history persisted in SQLite.
 - Owner-managed access requests and SQLite-backed user approvals.
+- Long generated answers are split into safe Telegram-sized messages.
 - General assistant workflows for writing, rewriting, shortening, shell help, voice notes, and document analysis.
 - Current Telegram interface with a planned channel adapter path for eXpress.
 - SURF business prompt modes:

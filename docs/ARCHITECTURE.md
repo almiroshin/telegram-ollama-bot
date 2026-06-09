@@ -83,7 +83,7 @@ Responsibilities:
 
 - `bot.py` - stable launchd-compatible entry point.
 - `app/config.py` - environment parsing, typed settings, logging setup.
-- `app/assistant.py` - channel-neutral request/response models and text request handling.
+- `app/assistant.py` - channel-neutral request/response models, text request handling, and response chunking helpers.
 - `app/prompts.py` - system prompts and prompt modes.
 - `app/access.py` - owner checks and channel-aware access decisions.
 - `app/history.py` - SQLite-backed conversation history repository.
@@ -106,6 +106,7 @@ Responsibilities:
    - the new user message.
 6. The request is sent to `OLLAMA_URL` with `POST`.
 7. The response is stored in SQLite and sent back through the active channel.
+8. Long generated responses are split into delivery chunks before sending so channel message limits do not break core assistant workflows.
 
 History is stored in the SQLite database configured by `HISTORY_DB_PATH`:
 

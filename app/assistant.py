@@ -10,6 +10,7 @@ TELEGRAM_CHANNEL = "telegram"
 EXPRESS_CHANNEL = "express"
 
 PUBLIC_VISIBILITY = "public"
+DEFAULT_DELIVERY_CHUNK_SIZE = 3900
 
 MODE_COMMANDS = {
     "email": "email",
@@ -85,6 +86,47 @@ def get_mode_for_command(command: str) -> str | None:
 
 def get_example_for_mode(mode: str) -> str:
     return MODE_EXAMPLES.get(mode, "Пришлите текст после команды.")
+
+
+def split_text_for_delivery(
+    text: str,
+    max_chars: int = DEFAULT_DELIVERY_CHUNK_SIZE,
+) -> list[str]:
+    if max_chars <= 0:
+        raise ValueError("max_chars must be positive")
+
+    if len(text) <= max_chars:
+        return [text]
+
+    chunks = []
+    remaining = text
+
+    while len(remaining) > max_chars:
+        split_at = _find_delivery_split(remaining, max_chars)
+        chunk = remaining[:split_at].rstrip()
+
+        if not chunk:
+            chunk = remaining[:max_chars]
+
+        chunks.append(chunk)
+        remaining = remaining[len(chunk):].lstrip()
+
+    if remaining:
+        chunks.append(remaining)
+
+    return chunks
+
+
+def _find_delivery_split(text: str, max_chars: int) -> int:
+    minimum_useful_split = max_chars // 2
+
+    for separator in ("\n\n", "\n", " "):
+        split_at = text.rfind(separator, 0, max_chars + 1)
+
+        if split_at >= minimum_useful_split:
+            return split_at + (0 if separator == " " else len(separator))
+
+    return max_chars
 
 
 async def handle_text_request(request: AssistantRequest) -> AssistantResponse:
