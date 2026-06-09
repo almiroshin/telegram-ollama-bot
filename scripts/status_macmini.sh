@@ -7,7 +7,21 @@ PYTHON_BIN="${PYTHON_BIN:-$VENV_DIR/bin/python}"
 LAUNCHD_LABEL="${LAUNCHD_LABEL:-com.surf.telegram-ollama-bot}"
 LOG_FILE="${LOG_FILE:-$BOT_DIR/bot.log}"
 ERR_FILE="${ERR_FILE:-$BOT_DIR/bot.err}"
+ENV_FILE="${ENV_FILE:-$BOT_DIR/.env}"
 OLLAMA_TAGS_URL="${OLLAMA_TAGS_URL:-http://127.0.0.1:11434/api/tags}"
+
+if [[ -f "$ENV_FILE" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+  set +a
+fi
+
+HISTORY_DB_PATH="${HISTORY_DB_PATH:-bot.sqlite}"
+
+if [[ "$HISTORY_DB_PATH" != /* ]]; then
+  HISTORY_DB_PATH="$BOT_DIR/$HISTORY_DB_PATH"
+fi
 
 print_section() {
   printf '\n== %s ==\n' "$1"
@@ -51,6 +65,15 @@ if command -v curl >/dev/null 2>&1 && curl -fsS "$OLLAMA_TAGS_URL" >/dev/null; t
   printf 'Ollama is reachable: %s\n' "$OLLAMA_TAGS_URL"
 else
   printf 'Ollama check failed: %s\n' "$OLLAMA_TAGS_URL"
+fi
+
+print_section "History"
+printf 'HISTORY_DB_PATH: %s\n' "$HISTORY_DB_PATH"
+
+if [[ -f "$HISTORY_DB_PATH" ]]; then
+  wc -c "$HISTORY_DB_PATH"
+else
+  printf 'History database not found yet.\n'
 fi
 
 print_section "Logs"

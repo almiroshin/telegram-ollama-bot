@@ -33,6 +33,7 @@ def main():
     LOGGER.info("OLLAMA_URL: %s", SETTINGS.ollama_url)
     LOGGER.info("OLLAMA_MODEL: %s", SETTINGS.ollama_model)
     LOGGER.info("MAX_HISTORY_MESSAGES: %s", SETTINGS.max_history_messages)
+    LOGGER.info("HISTORY_DB_PATH: %s", SETTINGS.history_db_path)
     LOGGER.info(
         "WHISPER: model=%s device=%s compute_type=%s",
         SETTINGS.whisper_model_size,

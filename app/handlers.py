@@ -11,7 +11,7 @@ from telegram.ext import ContextTypes
 from app.access import get_update_user_id, reject_unauthorized
 from app.config import SETTINGS
 from app.documents import extract_text_from_file, trim_document_text
-from app.llm import USER_HISTORY, ask_ollama
+from app.llm import ask_ollama, reset_user_history
 from app.stt import transcribe_audio_file
 
 
@@ -55,7 +55,7 @@ async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if await reject_unauthorized(update):
         return
 
-    USER_HISTORY.pop(update.effective_user.id, None)
+    reset_user_history(update.effective_user.id)
     await update.message.reply_text("История диалога очищена.")
 
 
@@ -88,6 +88,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Статус: работает\n"
             f"Модель: {SETTINGS.ollama_model}\n"
             f"Ollama URL: {SETTINGS.ollama_url}\n"
+            f"History DB: {SETTINGS.history_db_path}\n"
             f"Whisper: {SETTINGS.whisper_model_size}, "
             f"{SETTINGS.whisper_device}, {SETTINGS.whisper_compute_type}\n"
             f"Файлы: лимит {SETTINGS.max_file_size_mb} MB, "

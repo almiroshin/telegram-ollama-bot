@@ -14,6 +14,7 @@ The current Mac mini setup uses:
 | launchd plist | `~/Library/LaunchAgents/com.surf.telegram-ollama-bot.plist` |
 | stdout log | `~/telegram-ollama-bot/bot.log` |
 | stderr log | `~/telegram-ollama-bot/bot.err` |
+| history database | `~/telegram-ollama-bot/bot.sqlite` |
 | Git branch | `main` |
 
 ## Deployment Rule
@@ -118,6 +119,7 @@ Common Mac mini values:
 ```text
 OLLAMA_URL=http://127.0.0.1:11434/api/chat
 OLLAMA_MODEL=qwen3:8b
+HISTORY_DB_PATH=bot.sqlite
 LOG_LEVEL=INFO
 POPPLER_PATH=/opt/homebrew/bin
 TESSERACT_CMD=/opt/homebrew/bin/tesseract

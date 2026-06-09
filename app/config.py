@@ -33,6 +33,7 @@ class Settings:
     ollama_url: str
     ollama_model: str
     max_history_messages: int
+    history_db_path: str
     allowed_telegram_user_ids: set[int]
     log_level: str
     whisper_model_size: str
@@ -53,6 +54,7 @@ def load_settings() -> Settings:
         ollama_url=os.getenv("OLLAMA_URL", "http://127.0.0.1:11434/api/chat"),
         ollama_model=os.getenv("OLLAMA_MODEL", "qwen3:8b"),
         max_history_messages=int(os.getenv("MAX_HISTORY_MESSAGES", "12")),
+        history_db_path=os.getenv("HISTORY_DB_PATH", "bot.sqlite"),
         allowed_telegram_user_ids=parse_allowed_user_ids(
             os.getenv("ALLOWED_TELEGRAM_USER_IDS", "")
         ),

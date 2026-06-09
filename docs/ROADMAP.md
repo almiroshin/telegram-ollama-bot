@@ -40,6 +40,7 @@ app/
   config.py
   access.py
   prompts.py
+  history.py
   llm.py
   handlers.py
   stt.py
@@ -67,22 +68,22 @@ Goal: keep useful context across restarts and make it manageable.
 
 Options:
 
-- SQLite for message history and user settings.
-- A simple `messages` table with `user_id`, `role`, `content`, and `created_at`.
+- SQLite for message history and user settings. Started for message history.
+- A simple `messages` table with `user_id`, `role`, `content`, and `created_at`. Done.
 - Commands such as `/history`, `/reset`, and later `/memory`.
 
 Tasks:
 
-- Add a repository layer for history.
-- Limit history by message count and/or tokens.
-- Add migrations or a simple schema bootstrap.
+- Add a repository layer for history. Done.
+- Limit history by message count and/or tokens. Message-count trimming is done.
+- Add migrations or a simple schema bootstrap. Basic schema bootstrap is done.
 - Separate short-term chat history from long-term user facts.
 
 Readiness criteria:
 
-- process restart does not erase history;
-- users can clear their own history;
-- database size is controlled.
+- process restart does not erase history. Done for conversation messages.
+- users can clear their own history. Done through `/reset`.
+- database size is controlled. Started through `MAX_HISTORY_MESSAGES` trimming.
 
 ## Phase 3. Queues For Heavy Work
 
@@ -176,8 +177,8 @@ Readiness criteria:
 
 ## Next Sprint Priorities
 
-1. Persistent history storage.
-2. More unit tests for document extraction, prompt mode routing, and error paths.
-3. Robust retry/backoff for Ollama, STT, and OCR.
-4. Background queue for OCR/STT workloads.
+1. More unit tests for document extraction, prompt mode routing, and error paths.
+2. Robust retry/backoff for Ollama, STT, and OCR.
+3. Background queue for OCR/STT workloads.
+4. User-facing history inspection and long-term memory controls.
 5. Document RAG planning.

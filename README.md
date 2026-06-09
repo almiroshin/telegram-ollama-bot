@@ -7,7 +7,7 @@ The project is implemented as a small Python application with [bot.py](bot.py) a
 ## Features
 
 - Local text chat through the Ollama Chat API.
-- Per-user short-term conversation history stored in process memory.
+- Per-user short-term conversation history persisted in SQLite.
 - Built-in prompt modes:
   - `/email` - draft a business email.
   - `/rewrite` - rewrite and improve text.
@@ -87,7 +87,8 @@ Main environment variables:
 | `ALLOWED_TELEGRAM_USER_IDS` | empty | Comma or space separated Telegram user IDs. Empty means access control is disabled. |
 | `OLLAMA_URL` | `http://127.0.0.1:11434/api/chat` | Ollama Chat API endpoint. |
 | `OLLAMA_MODEL` | `qwen3:8b` | Ollama model name. |
-| `MAX_HISTORY_MESSAGES` | `12` | Number of recent messages kept in memory. |
+| `MAX_HISTORY_MESSAGES` | `12` | Number of recent messages kept in active context and retained per user. |
+| `HISTORY_DB_PATH` | `bot.sqlite` | SQLite database path for conversation history. |
 | `LOG_LEVEL` | `INFO` | Python logging level. |
 | `WHISPER_MODEL_SIZE` | `small` | `faster-whisper` model size. |
 | `WHISPER_DEVICE` | `cpu` | STT device: `cpu`, `cuda`, or `auto`. |
@@ -130,12 +131,12 @@ After starting the bot, send this command in Telegram:
 
 ## Current Limitations
 
-- Conversation history is stored in memory and is lost after restart.
+- Conversation history is persisted in SQLite, but there is no `/history` inspection command yet.
 - Access control is disabled unless `ALLOWED_TELEGRAM_USER_IDS` is set.
-- The application has a modular baseline, but runtime history is still in memory and heavy work still runs inside Telegram handlers.
+- Heavy OCR/STT work still runs inside Telegram handlers.
 - Documents longer than `MAX_DOCUMENT_CHARS` are truncated; RAG/document indexing is not implemented yet.
 - Automated tests currently cover helper logic only; Telegram/Ollama integration tests are not implemented yet.
 
 ## Recommended Next Step
 
-Set `ALLOWED_TELEGRAM_USER_IDS` in production, then add persistent memory. This gives the bot a safer baseline before RAG, queues, and richer document workflows.
+Next, add broader test coverage and controlled background processing for heavy OCR/STT work.

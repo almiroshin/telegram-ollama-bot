@@ -3,18 +3,22 @@ from __future__ import annotations
 import httpx
 
 from app.config import SETTINGS
+from app.history import SQLiteHistoryRepository
 from app.prompts import MODES
 
 
-USER_HISTORY = {}
+HISTORY_REPOSITORY = SQLiteHistoryRepository(SETTINGS.history_db_path)
 
 
 async def ask_ollama(user_id: int, text: str, mode: str = "default") -> str:
-    history = USER_HISTORY.setdefault(user_id, [])
+    history = HISTORY_REPOSITORY.get_recent_messages(
+        user_id,
+        SETTINGS.max_history_messages,
+    )
     system_prompt = MODES.get(mode, MODES["default"])
 
     messages = [{"role": "system", "content": system_prompt}]
-    messages.extend(history[-SETTINGS.max_history_messages:])
+    messages.extend(history)
     messages.append({"role": "user", "content": text})
 
     payload = {
@@ -37,8 +41,11 @@ async def ask_ollama(user_id: int, text: str, mode: str = "default") -> str:
     if not answer:
         answer = "Модель вернула пустой ответ."
 
-    history.append({"role": "user", "content": text})
-    history.append({"role": "assistant", "content": answer})
-    USER_HISTORY[user_id] = history[-SETTINGS.max_history_messages:]
+    HISTORY_REPOSITORY.append_exchange(user_id, text, answer)
+    HISTORY_REPOSITORY.trim_user_history(user_id, SETTINGS.max_history_messages)
 
     return answer
+
+
+def reset_user_history(user_id: int) -> None:
+    HISTORY_REPOSITORY.clear_user_history(user_id)

@@ -2,6 +2,7 @@ import asyncio
 import importlib
 import os
 import sys
+import tempfile
 import types
 import unittest
 from types import SimpleNamespace
@@ -75,12 +76,15 @@ def clear_app_modules():
 class BotHelperTests(unittest.TestCase):
     def import_module(self, module_name, allowed_user_ids=""):
         clear_app_modules()
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
 
         with patch.dict(sys.modules, build_dependency_stubs()):
             with patch.dict(
                 os.environ,
                 {
                     "ALLOWED_TELEGRAM_USER_IDS": allowed_user_ids,
+                    "HISTORY_DB_PATH": os.path.join(tempdir.name, "history.sqlite"),
                     "LOG_LEVEL": "CRITICAL",
                 },
             ):
@@ -154,6 +158,38 @@ class BotHelperTests(unittest.TestCase):
             documents.trim_document_text("abcdef", max_chars=5),
             ("abcde", True),
         )
+
+    def test_sqlite_history_repository_persists_trims_and_clears_messages(self):
+        history = self.import_module("app.history")
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            repository = history.SQLiteHistoryRepository(
+                os.path.join(tempdir, "history.sqlite")
+            )
+
+            repository.append_exchange(100, "hello", "hi")
+            repository.append_exchange(100, "next", "done")
+            repository.append_exchange(200, "other", "answer")
+            repository.trim_user_history(100, 2)
+
+            self.assertEqual(
+                repository.get_recent_messages(100, 10),
+                [
+                    {"role": "user", "content": "next"},
+                    {"role": "assistant", "content": "done"},
+                ],
+            )
+            self.assertEqual(
+                repository.get_recent_messages(200, 10),
+                [
+                    {"role": "user", "content": "other"},
+                    {"role": "assistant", "content": "answer"},
+                ],
+            )
+
+            repository.clear_user_history(100)
+
+            self.assertEqual(repository.get_recent_messages(100, 10), [])
 
     def test_get_command_text_removes_command_prefix(self):
         handlers = self.import_module("app.handlers")

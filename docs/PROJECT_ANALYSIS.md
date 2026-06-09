@@ -20,14 +20,14 @@ This project is a personal local AI assistant exposed through Telegram. It alrea
 | --- | --- | --- |
 | Text chat | Available | Through the Ollama Chat API. |
 | Prompt modes | Available | Hardcoded in `MODES`. |
-| History | Available | In-memory, keyed by Telegram user ID. |
+| History | Available | SQLite-backed, keyed by Telegram user ID. |
 | Voice | Available | `faster-whisper`, Russian language. |
 | TXT/MD | Available | Multiple fallback encodings. |
 | PDF | Available | Direct text extraction through `pypdf`. |
 | PDF OCR | Available | `pdf2image` + Tesseract. |
 | DOCX | Available | Paragraphs and tables. |
 | User access control | Available | `ALLOWED_TELEGRAM_USER_IDS`; disabled when empty. |
-| Persistence | Missing | History is lost on restart. |
+| Persistence | Partial | Conversation history persists; user settings and long-term memory are not implemented. |
 | Tests | Partial | Helper-level `unittest` coverage exists; integration tests are still missing. |
 | RAG | Missing | Long documents are currently truncated. |
 
@@ -46,11 +46,11 @@ Anyone who can message the bot can use the local LLM and document processing cap
 
 Recommendation: set `ALLOWED_TELEGRAM_USER_IDS` in production and keep `/myid` available for discovering Telegram IDs.
 
-### 2. Runtime State Is Still In Memory
+### 2. Persistent Memory Is Still Minimal
 
-Conversation history is still stored in process memory. A restart clears the context, and there is no way to inspect, compact, or expire history outside the running process.
+Conversation history is now stored in SQLite, but there is no user-facing `/history` command, no long-term memory, and no compaction beyond message-count trimming.
 
-Recommendation: add a small SQLite-backed history repository with explicit cleanup and `/reset` support.
+Recommendation: add history inspection, summarized long-term memory, and stronger retention controls.
 
 ### 3. Heavy Work Inside Handlers
 
@@ -98,13 +98,14 @@ Minimum refactoring sequence:
 3. Move pure document parsing functions into a separate module. Done.
 4. Add tests for helper functions. Started.
 5. Extract the Ollama client and Telegram handlers. Done.
+6. Add SQLite-backed conversation history. Done.
 
 ## Near-Term Technical Tasks
 
 - Set `ALLOWED_TELEGRAM_USER_IDS` in production.
 - Add a proper logger.
 - Add `.env` loading through `python-dotenv` or explicitly document shell export.
-- Add SQLite-backed persistent history.
+- Add user-facing history inspection and long-term memory controls.
 - Add broader test coverage for document extraction, prompt routing, and external error handling.
 - Split long responses to respect Telegram message limits.
 - Add retry/backoff for Ollama.

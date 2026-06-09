@@ -11,6 +11,7 @@ flowchart LR
     U["Telegram user"] --> TG["Telegram Bot API"]
     TG --> H["python-telegram-bot handlers"]
     H --> M["Prompt modes and chat history"]
+    M --> DB["SQLite history database"]
     M --> O["Ollama Chat API"]
     O --> M
     H --> V["faster-whisper STT"]
@@ -44,6 +45,7 @@ app/
   config.py
   documents.py
   handlers.py
+  history.py
   llm.py
   main.py
   prompts.py
@@ -57,7 +59,8 @@ Responsibilities:
 - `app/config.py` - environment parsing, typed settings, logging setup.
 - `app/prompts.py` - system prompts and prompt modes.
 - `app/access.py` - Telegram user allowlist.
-- `app/llm.py` - Ollama Chat API client and in-memory conversation history.
+- `app/history.py` - SQLite-backed conversation history repository.
+- `app/llm.py` - Ollama Chat API client and history orchestration.
 - `app/stt.py` - `faster-whisper` model loading and transcription.
 - `app/documents.py` - text extraction from TXT/MD/PDF/DOCX and OCR fallback.
 - `app/handlers.py` - Telegram command and message handlers.
@@ -72,18 +75,15 @@ Responsibilities:
    - the user's recent history;
    - the new user message.
 4. The request is sent to `OLLAMA_URL` with `POST`.
-5. The response is stored in `USER_HISTORY` and sent back to Telegram.
+5. The response is stored in SQLite and sent back to Telegram.
 
-History is stored in process memory:
+History is stored in the SQLite database configured by `HISTORY_DB_PATH`:
 
 ```text
-USER_HISTORY[user_id] = [
-    {"role": "user", "content": "..."},
-    {"role": "assistant", "content": "..."}
-]
+messages(id, user_id, role, content, created_at)
 ```
 
-After each response, history is trimmed to `MAX_HISTORY_MESSAGES`.
+After each successful response, the user's persisted history is trimmed to `MAX_HISTORY_MESSAGES`.
 
 ## Voice Messages
 
@@ -121,12 +121,12 @@ Configuration is read from environment variables when the module is imported. Va
 
 ## Responsibility Boundaries
 
-The code now has a modular baseline. The next boundary worth extracting is persistent history, because `app/llm.py` still stores conversation state in process memory.
+The code now has a modular baseline and SQLite-backed short-term history. The next boundary worth extracting is heavy task execution, because OCR and STT still run directly inside Telegram handlers.
 
 ## Main Technical Risks
 
 - Telegram user access control is disabled unless `ALLOWED_TELEGRAM_USER_IDS` is set.
-- Conversation history is not persistent.
+- Conversation history is persistent, but there is no user-facing history inspection command yet.
 - Heavy OCR/STT work is executed inside handlers and can delay processing.
 - Test coverage is still helper-level and does not cover Telegram/Ollama integration.
 - No graceful shutdown, health endpoint, or metrics.
