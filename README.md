@@ -1,6 +1,6 @@
-# Telegram Ollama Bot
+# SURF Telegram Ollama Bot
 
-A local Telegram bot powered by Ollama. It works as a personal AI assistant with business-oriented prompt modes, voice transcription, document analysis, and OCR for scanned PDFs.
+A local Telegram bot powered by Ollama. It works as a general AI assistant for daily work and as a specialized pre-sales and delivery assistant for SURF Consulting's IT infrastructure, supply, tender, and consulting workflows.
 
 The project is implemented as a small Python application with [bot.py](bot.py) as the entry point and the main runtime code split across the [app](app) package. Telegram is the user interface, Ollama provides the local LLM backend, `faster-whisper` handles speech-to-text, and Tesseract/Poppler are used for OCR and PDF processing.
 
@@ -9,7 +9,14 @@ The project is implemented as a small Python application with [bot.py](bot.py) a
 - Local text chat through the Ollama Chat API.
 - Per-user short-term conversation history persisted in SQLite.
 - Owner-managed access requests and SQLite-backed user approvals.
-- Built-in prompt modes:
+- General assistant workflows for writing, rewriting, shortening, shell help, voice notes, and document analysis.
+- SURF business prompt modes:
+  - `/audit` - prepare IT landscape audit and discovery questions.
+  - `/proposal` - draft a commercial proposal structure.
+  - `/tender` - analyze tenders, RFPs, and technical specifications.
+  - `/vendor` - compare vendor alternatives and mark supplier checks.
+  - `/risk` - review project, delivery, logistics, security, and commercial risks.
+- General business prompt modes:
   - `/email` - draft a business email.
   - `/rewrite` - rewrite and improve text.
   - `/shorten` - make text shorter and stronger.
@@ -36,6 +43,7 @@ The project is implemented as a small Python application with [bot.py](bot.py) a
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
+- [SURF Business Context](docs/SURF_BUSINESS_CONTEXT.md)
 - [Deployment](docs/DEPLOYMENT.md)
 - [Operations](docs/OPERATIONS.md)
 - [Roadmap](docs/ROADMAP.md)
@@ -151,11 +159,13 @@ Approved users are stored in SQLite and can use the bot without changing `.env`.
 ## Current Limitations
 
 - Conversation history is persisted in SQLite, but there is no `/history` inspection command yet.
+- There is no case workspace yet for customer opportunities, tenders, and proposal drafts.
+- Vendor, stock, price, warranty, and delivery facts are not backed by a structured source of truth yet.
 - Access control is disabled unless `OWNER_TELEGRAM_USER_IDS` or the legacy `ALLOWED_TELEGRAM_USER_IDS` is set.
 - Heavy OCR/STT work still runs inside Telegram handlers.
-- Documents longer than `MAX_DOCUMENT_CHARS` are truncated; RAG/document indexing is not implemented yet.
+- Documents longer than `MAX_DOCUMENT_CHARS` are truncated; RAG/document indexing for long tenders and specifications is not implemented yet.
 - Automated tests currently cover helper logic only; Telegram/Ollama integration tests are not implemented yet.
 
 ## Recommended Next Step
 
-Next, add broader test coverage and controlled background processing for heavy OCR/STT work.
+Next, add a minimal case workspace for customer opportunities, then improve tender/document intelligence.

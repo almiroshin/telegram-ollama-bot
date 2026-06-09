@@ -289,6 +289,19 @@ class BotHelperTests(unittest.TestCase):
 
         self.assertEqual(handlers.get_command_text(update, "email"), "hello")
 
+    def test_surf_business_prompt_modes_exist(self):
+        prompts = self.import_module("app.prompts")
+
+        self.assertTrue(
+            {
+                "audit",
+                "proposal",
+                "tender",
+                "vendor",
+                "risk",
+            }.issubset(prompts.MODES)
+        )
+
     def test_bot_module_exposes_thin_entrypoint(self):
         bot = self.import_module("bot")
 

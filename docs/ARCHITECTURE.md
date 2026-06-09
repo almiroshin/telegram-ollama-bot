@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The project implements a personal Telegram assistant backed by a local Ollama model. Telegram provides the user interface, while text generation, voice transcription, and document processing run locally on the machine that hosts the bot.
+The project implements a local Telegram assistant with two layers: a general AI assistant for daily work and a specialized assistant for SURF Consulting's IT infrastructure pre-sales, tender analysis, delivery risk review, and business communication workflows. Telegram provides the user interface, while text generation, voice transcription, and document processing run locally on the machine that hosts the bot.
 
 ## Components
 
@@ -73,7 +73,7 @@ Responsibilities:
 ## Text Request Flow
 
 1. The user sends a text message or command.
-2. The handler selects a prompt mode: `default`, `email`, `rewrite`, `shorten`, `vip`, `surf`, `shell`, or `followup`.
+2. The handler selects a prompt mode: `default`, `audit`, `proposal`, `tender`, `vendor`, `risk`, `email`, `rewrite`, `shorten`, `vip`, `surf`, `shell`, or `followup`.
 3. `ask_ollama()` builds the request:
    - the system prompt for the selected mode;
    - the user's recent history;

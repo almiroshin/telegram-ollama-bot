@@ -202,6 +202,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/shorten — сократить текст\n"
         "/vip — текст для высокого руководителя\n"
         "/surf — стиль SURF Consulting\n"
+        "/audit — подготовка ИТ-аудита\n"
+        "/proposal — структура КП\n"
+        "/tender — анализ тендера/RFP/ТЗ\n"
+        "/vendor — подбор вендорских альтернатив\n"
+        "/risk — риск-разбор проекта или поставки\n"
         "/shell — помощь по терминалу\n"
         "/followup — письмо после встречи\n\n"
         "Голосовые сообщения тоже можно отправлять — я распознаю их локально.\n"
@@ -445,6 +450,11 @@ async def handle_mode(update: Update, context: ContextTypes.DEFAULT_TYPE, mode: 
             "shorten": "Например:\n/shorten Сократи этот текст для Telegram: ...",
             "vip": "Например:\n/vip Опиши проект цифрового медицинского профиля для министра",
             "surf": "Например:\n/surf Упакуй этот текст в стиле SURF Consulting: ...",
+            "audit": "Например:\n/audit Заказчик хочет модернизировать СХД и серверы, вводные такие: ...",
+            "proposal": "Например:\n/proposal Подготовь структуру КП для обновления инфраструктуры филиалов",
+            "tender": "Например:\n/tender Проанализируй требования закупки и выдели риски участия: ...",
+            "vendor": "Например:\n/vendor Подбери альтернативы для СХД под VMware/Proxmox и резервное копирование",
+            "risk": "Например:\n/risk Проверь риски поставки и внедрения для проекта: ...",
             "shell": "Например:\n/shell Как проверить, что Telegram-бот запущен и нет дублей?",
             "followup": "Например:\n/followup После встречи обсудили СХД, заказчик ждет сравнение Dell/HPE/NetApp"
         }
@@ -485,6 +495,26 @@ async def vip(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def surf(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await handle_mode(update, context, "surf")
+
+
+async def audit(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await handle_mode(update, context, "audit")
+
+
+async def proposal(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await handle_mode(update, context, "proposal")
+
+
+async def tender(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await handle_mode(update, context, "tender")
+
+
+async def vendor(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await handle_mode(update, context, "vendor")
+
+
+async def risk(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await handle_mode(update, context, "risk")
 
 
 async def shell(update: Update, context: ContextTypes.DEFAULT_TYPE):

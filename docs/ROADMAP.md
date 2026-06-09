@@ -1,187 +1,222 @@
 # Roadmap
 
-## Current Status
+## Product Direction
 
-The project is a working personal prototype. Core workflows are already available: text chat, prompt modes, voice transcription, document analysis, and PDF OCR. The next major step is to turn the prototype into a maintainable service with access control, tests, modular structure, and reliable handling of heavy workloads.
+The project should evolve into a two-layer local assistant:
+
+- a general AI assistant for everyday work;
+- a specialized pre-sales and delivery assistant for SURF Consulting, an IT infrastructure supplier and consulting company.
+
+The highest-value workflows are:
+
+- answer general work questions;
+- draft, rewrite, shorten, and structure texts;
+- help with shell commands and operational troubleshooting;
+- process voice notes and documents;
+- qualify customer requests and prepare discovery questions;
+- support IT landscape audits;
+- analyze tenders, RFPs, technical specifications, and procurement documents;
+- draft commercial proposals and follow-ups;
+- compare vendor alternatives without inventing prices or stock availability;
+- identify delivery, logistics, compatibility, security, and commercial risks;
+- preserve internal knowledge locally.
 
 ## Development Principles
 
-- Prioritize security and operability before adding more features.
-- Preserve the fast Telegram-based user experience.
-- Keep local processing as the default strength of the project.
-- Evolve document workflows toward RAG instead of only increasing context size.
-- Add tests around logic that is easy to break: routing, parsing, limits, and external errors.
+- Keep sensitive customer and commercial data local by default.
+- Treat generated output as a draft that requires human commercial approval.
+- Never invent prices, stock, lead times, warranty terms, or vendor commitments.
+- Prefer structured outputs that can be reused in email, proposals, and internal notes.
+- Keep generic assistant features stable while adding SURF-specific workflows.
+- Preserve the general assistant layer; specialized workflows should extend it, not replace it.
+- Add tests around prompt routing, document parsing, access control, and failure paths.
 
-## Phase 0. Stabilization
+## Phase 0. Operational Foundation
 
-Goal: make the current bot safer and easier to reproduce without a major rewrite.
+Goal: make the bot safe enough for internal use.
 
-- Add a Telegram user allowlist. Done in the first Phase 0 increment.
-- Add owner-managed access requests and approvals. Done.
-- Hide low-level errors from normal user responses and write details to logs. Started in the first Phase 0 increment.
-- Replace `print` with `logging`. Done in the first Phase 0 increment.
-- Keep `README`, `.env.example`, `requirements.txt`, and operations documentation up to date.
-- Add basic smoke checks: syntax, configuration import, and unit tests for pure functions. Started in the first Phase 0 increment.
-- Document the minimum supported Python version.
+Status: mostly done.
 
-Readiness criteria:
+Completed:
 
-- a new user can start the bot from the documentation;
-- unknown Telegram users cannot use the bot;
-- local verification can be run with one command.
+- modular `app/` structure;
+- `.env.example`, requirements, deployment and operations docs;
+- owner-managed Telegram access requests;
+- SQLite conversation history;
+- safe user-facing errors and logs;
+- Mac mini deployment scripts;
+- helper-level unit tests.
 
-## Phase 1. Modular Structure
+Remaining:
 
-Goal: stop `bot.py` from becoming the whole application and separate domain logic from Telegram handlers.
-
-Current structure:
-
-```text
-app/
-  config.py
-  access.py
-  prompts.py
-  history.py
-  llm.py
-  handlers.py
-  stt.py
-  documents.py
-tests/
-```
-
-Tasks:
-
-- Move environment configuration into typed settings. Done.
-- Move prompts into a separate module. Done.
-- Extract the Ollama client. Done.
-- Extract document handling and STT. Done.
-- Add unit tests that do not require real Telegram or Ollama. Started.
+- document the minimum supported Python version;
+- add automatic `.env` loading or make shell export behavior explicit in every path;
+- add log rotation and backup guidance for `bot.sqlite`.
 
 Readiness criteria:
 
-- `bot.py` is only a thin entry point. Done.
-- document parsing can be tested independently. Started.
-- the LLM client can be mocked. Started.
+- unknown Telegram users cannot use work commands;
+- owners can approve and revoke users without SSH;
+- the Mac mini can be deployed from GitHub with one command.
 
-## Phase 2. Persistent Memory
+## Phase 1. SURF Workflow Prompt Modes
 
-Goal: keep useful context across restarts and make it manageable.
+Goal: preserve the general assistant core and add modes aligned with SURF Consulting's real operating work.
 
-Options:
+Status: initial implementation done.
 
-- SQLite for message history and user settings. Started for message history.
-- A simple `messages` table with `user_id`, `role`, `content`, and `created_at`. Done.
-- A simple `users` table with access status, role, and approval metadata. Done.
-- Commands such as `/history`, `/reset`, and later `/memory`.
+Implemented modes:
 
-Tasks:
+- general assistant: `default`, `/email`, `/rewrite`, `/shorten`, `/shell`, voice, and document processing;
+- `/audit` - IT landscape audit and discovery questions;
+- `/proposal` - commercial proposal structure;
+- `/tender` - tender, RFP, and technical specification analysis;
+- `/vendor` - vendor alternatives and supplier checklists;
+- `/risk` - delivery, logistics, security, compatibility, and commercial risk review;
+- `/followup` - meeting follow-up;
+- `/vip` - executive communication.
 
-- Add a repository layer for history. Done.
-- Limit history by message count and/or tokens. Message-count trimming is done.
-- Add migrations or a simple schema bootstrap. Basic schema bootstrap is done.
-- Separate short-term chat history from long-term user facts.
+Next tasks:
+
+- add tests that verify every Telegram command maps to an existing prompt mode;
+- move prompts into structured files or templates;
+- add examples for common SURF scenarios: storage, servers, AI infrastructure, security, engineering systems, and modernization projects;
+- add a compact output policy for Telegram message length.
 
 Readiness criteria:
 
-- process restart does not erase history. Done for conversation messages.
-- process restart does not erase approved users. Done through SQLite user management.
-- users can clear their own history. Done through `/reset`.
-- database size is controlled. Started through `MAX_HISTORY_MESSAGES` trimming.
+- account managers can process a customer request from Telegram;
+- pre-sales engineers can produce audit questions and a first proposal outline;
+- tender documents generate a structured response plan and risk list.
 
-## Phase 3. Queues For Heavy Work
+## Phase 2. Pre-Sales Case Workspace
 
-Goal: avoid blocking Telegram handlers with OCR, STT, and long LLM requests.
+Goal: group messages, documents, and outputs by customer opportunity instead of only by Telegram user.
 
 Tasks:
 
-- Introduce background task workers.
-- Limit OCR/STT concurrency.
-- Add user-facing statuses: queued, processing, done, failed.
-- Add timeout and cancellation policy.
+- add a `cases` table: customer, opportunity name, sector, stage, owner, created date;
+- add commands: `/case_new`, `/case_select`, `/case_status`, `/case_close`;
+- attach document analyses and generated drafts to a case;
+- store key facts: customer goals, deadlines, budget signals, required vendors, constraints, risks;
+- add `/case_summary` for a clean internal brief.
+
+Readiness criteria:
+
+- several opportunities can be handled in parallel;
+- the bot can summarize a case after restart;
+- a case brief can be reused for internal handoff.
+
+## Phase 3. Tender And Document Intelligence
+
+Goal: analyze long commercial and technical documents without truncating only the beginning.
+
+Tasks:
+
+- chunk long documents;
+- preserve page and section references for PDFs and DOCX;
+- add local embeddings and vector search;
+- add commands: `/doc_summary`, `/ask_doc`, `/doc_risks`, `/forget_docs`;
+- add tender-specific extraction: mandatory requirements, deadlines, penalties, warranty, delivery terms, security requirements, clarification questions;
+- add map-reduce summarization for large documents before full RAG is ready.
+
+Readiness criteria:
+
+- long tenders can be analyzed end to end;
+- the bot can answer questions about previously uploaded documents;
+- answers include the fragments or pages used.
+
+## Phase 4. Vendor And Supply Knowledge Base
+
+Goal: support vendor alternatives and supply planning with explicit source control.
+
+Tasks:
+
+- add local ingestion for vendor decks, product matrices, stock exports, prior quotes, and delivery notes;
+- store source metadata: file, date, owner, freshness, confidence;
+- add `/vendor_compare`, `/vendor_checks`, and `/supply_risks`;
+- prevent generated answers from treating stale or missing data as facts;
+- add manual confirmation fields for price, stock, warranty, lead time, and logistics route.
+
+Readiness criteria:
+
+- the assistant can prepare a vendor shortlist with explicit assumptions;
+- supplier checks are visible before a proposal is sent;
+- stale data is clearly marked.
+
+## Phase 5. Proposal Factory
+
+Goal: turn case facts and document analysis into reusable proposal drafts.
+
+Tasks:
+
+- add proposal templates for infrastructure modernization, storage, server platforms, AI infrastructure, security, and engineering systems;
+- generate proposal sections: customer context, goals, solution, scope, options, risks, assumptions, next steps;
+- add export to Markdown first, then DOCX;
+- add internal review checklist before sending;
+- add versioned proposal drafts per case.
+
+Readiness criteria:
+
+- a first proposal draft can be generated from a case summary;
+- assumptions and missing data are visible;
+- a proposal can be reviewed and revised without losing previous drafts.
+
+## Phase 6. Heavy Work And Reliability
+
+Goal: avoid blocking Telegram handlers with OCR, STT, long LLM requests, and document indexing.
+
+Tasks:
+
+- introduce a background task queue;
+- limit OCR/STT/indexing concurrency;
+- add user-facing statuses: queued, processing, done, failed;
+- add timeout and cancellation policy;
+- split long Telegram responses safely;
+- add retry/backoff for Ollama and document processing.
 
 Readiness criteria:
 
 - multiple heavy documents do not stall the bot;
 - users receive clear processing status;
-- CPU/RAM usage is bounded.
+- CPU/RAM usage is bounded on the Mac mini.
 
-## Phase 4. Document RAG
+## Phase 7. Observability, Governance, And Operations
 
-Goal: analyze long documents without truncating only the first part.
-
-Minimum version:
-
-- text chunking;
-- embeddings;
-- local vector store;
-- retrieval of relevant fragments for a question;
-- answers that cite fragments or pages.
+Goal: make internal production use auditable and recoverable.
 
 Tasks:
 
-- Store uploaded documents and metadata.
-- Preserve page references for direct PDF parsing and OCR.
-- Add commands: `/doc_summary`, `/ask_doc`, `/forget_docs`.
-- Add storage limits.
-
-Readiness criteria:
-
-- long documents can be analyzed end to end;
-- users can ask questions about previously uploaded documents;
-- the bot states which fragments were used for the answer.
-
-## Phase 5. Response Quality And Modes
-
-Goal: make prompt modes more controllable and repeatable.
-
-Tasks:
-
-- Move prompts into files or structured templates.
-- Add modes for commercial proposals, technical specifications, meeting minutes, procurement analysis, and call summaries.
-- Add a compact response policy for Telegram.
-- Add post-processing for long responses with message splitting.
-- Add `/mode` to select the default mode.
-
-Readiness criteria:
-
-- prompt modes can be changed without editing core code;
-- long responses are delivered correctly in Telegram;
-- output format is stable on common tasks.
-
-## Phase 6. Observability And Maintenance
-
-Goal: understand what is happening in production-like usage.
-
-Tasks:
-
-- Structured logs.
-- Metrics: request count, Ollama errors, STT/OCR/LLM latency.
-- Healthcheck endpoint or a dedicated diagnostics command.
-- Log rotation.
-- Recovery runbook.
+- structured logs;
+- metrics: requests, errors, OCR/STT/LLM latency, document counts, case counts;
+- backup and restore for SQLite;
+- access audit log for approvals and revocations;
+- admin command audit trail;
+- healthcheck endpoint or diagnostics command;
+- recovery runbook.
 
 Readiness criteria:
 
 - issues can be diagnosed from logs;
-- bottlenecks are visible across Telegram, Ollama, STT, OCR, and parsing.
+- access changes are auditable;
+- the Mac mini service can be restored after failure.
 
 ## Backlog
 
-- Dockerfile and docker-compose.
-- Image attachments as first-class input.
-- Support for `.xlsx`, `.pptx`, and `.rtf`.
-- Role separation: owner/admin/user. Started with owner-managed access; admin permissions are not exposed yet.
-- Per-user rate limiting.
-- Automatic summarization of long history.
-- Calendar or task tracker integration.
-- Export results to `.docx` or `.md`.
-- Web UI for prompts, users, and documents.
+- Web UI for cases, prompts, users, and documents.
+- Integration with CRM or task tracker.
+- Vendor stock import from spreadsheets.
+- Role separation beyond owner/user.
+- Per-user and per-case rate limits.
 - Regression prompt suite for evaluating model changes.
+- Dockerfile and docker-compose.
+- Support for `.xlsx`, `.pptx`, and `.rtf`.
+- Export results to `.docx` and proposal-ready Markdown.
 
 ## Next Sprint Priorities
 
-1. More unit tests for document extraction, prompt mode routing, and error paths.
-2. Robust retry/backoff for Ollama, STT, and OCR.
-3. Background queue for OCR/STT workloads.
-4. User-facing history inspection and long-term memory controls.
-5. Document RAG planning.
+1. Add `/case_new`, `/case_select`, and a minimal SQLite `cases` table.
+2. Add command-to-prompt routing tests for all SURF modes.
+3. Improve document mode for tender/RFP extraction.
+4. Add response splitting for long Telegram outputs.
+5. Add backup guidance for `bot.sqlite` on the Mac mini.

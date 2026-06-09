@@ -5,6 +5,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters
 from app.config import SETTINGS, configure_logging
 from app.handlers import (
     approve,
+    audit,
     deny,
     email,
     followup,
@@ -13,16 +14,20 @@ from app.handlers import (
     handle_voice,
     model,
     myid,
+    proposal,
     request_access,
     reset,
     rewrite,
+    risk,
     revoke,
     shell,
     shorten,
     start,
     status,
     surf,
+    tender,
     users,
+    vendor,
     vip,
 )
 
@@ -89,6 +94,11 @@ def main():
     app.add_handler(CommandHandler("shorten", shorten))
     app.add_handler(CommandHandler("vip", vip))
     app.add_handler(CommandHandler("surf", surf))
+    app.add_handler(CommandHandler("audit", audit))
+    app.add_handler(CommandHandler("proposal", proposal))
+    app.add_handler(CommandHandler("tender", tender))
+    app.add_handler(CommandHandler("vendor", vendor))
+    app.add_handler(CommandHandler("risk", risk))
     app.add_handler(CommandHandler("shell", shell))
     app.add_handler(CommandHandler("followup", followup))
 

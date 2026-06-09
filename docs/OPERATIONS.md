@@ -130,7 +130,7 @@ Practical tuning:
 
 ## Security
 
-The bot supports owner-managed Telegram access control. Before running the bot outside a personal environment, set at least one owner explicitly.
+The bot supports owner-managed Telegram access control. Before running the bot for internal team use, set at least one owner explicitly.
 
 Recommended configuration:
 
