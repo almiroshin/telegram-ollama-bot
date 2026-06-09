@@ -108,6 +108,8 @@ Responsibilities:
 7. The response is stored in SQLite and sent back through the active channel.
 8. Long generated responses are split into delivery chunks before sending so channel message limits do not break core assistant workflows.
 
+Workflow command registration is driven by `MODE_COMMANDS` in `app/assistant.py` and `TELEGRAM_MODE_HANDLERS` in `app/handlers.py`. Unit tests verify that each workflow command has a prompt mode, example text, and Telegram handler.
+
 History is stored in the SQLite database configured by `HISTORY_DB_PATH`:
 
 ```text

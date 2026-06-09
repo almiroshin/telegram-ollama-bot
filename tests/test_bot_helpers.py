@@ -75,6 +75,13 @@ def clear_app_modules():
 
 class BotHelperTests(unittest.TestCase):
     def import_module(self, module_name, allowed_user_ids="", owner_user_ids=""):
+        return self.import_modules(
+            module_name,
+            allowed_user_ids=allowed_user_ids,
+            owner_user_ids=owner_user_ids,
+        )[0]
+
+    def import_modules(self, *module_names, allowed_user_ids="", owner_user_ids=""):
         clear_app_modules()
         tempdir = tempfile.TemporaryDirectory()
         self.addCleanup(tempdir.cleanup)
@@ -89,7 +96,10 @@ class BotHelperTests(unittest.TestCase):
                     "LOG_LEVEL": "CRITICAL",
                 },
             ):
-                return importlib.import_module(module_name)
+                return [
+                    importlib.import_module(module_name)
+                    for module_name in module_names
+                ]
 
     def test_parse_allowed_user_ids_accepts_comma_and_space_separated_values(self):
         config = self.import_module("app.config")
@@ -338,6 +348,25 @@ class BotHelperTests(unittest.TestCase):
         self.assertEqual(assistant.get_mode_for_command("/proposal"), "proposal")
         self.assertEqual(assistant.get_mode_for_command("unknown"), None)
         self.assertIn("/risk", assistant.get_example_for_mode("risk"))
+
+    def test_workflow_commands_have_prompts_examples_and_telegram_handlers(self):
+        assistant, handlers, prompts = self.import_modules(
+            "app.assistant",
+            "app.handlers",
+            "app.prompts",
+        )
+
+        self.assertEqual(
+            set(assistant.MODE_COMMANDS),
+            set(handlers.TELEGRAM_MODE_HANDLERS),
+        )
+
+        for command, mode in assistant.MODE_COMMANDS.items():
+            with self.subTest(command=command, mode=mode):
+                self.assertIn(mode, prompts.MODES)
+                self.assertIn(mode, assistant.MODE_EXAMPLES)
+                self.assertIs(assistant.get_mode_for_command(command), mode)
+                self.assertTrue(callable(handlers.TELEGRAM_MODE_HANDLERS[command]))
 
     def test_assistant_request_and_response_models(self):
         assistant = self.import_module("app.assistant")

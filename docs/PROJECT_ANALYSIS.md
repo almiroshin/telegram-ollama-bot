@@ -155,7 +155,7 @@ Minimum refactoring sequence:
 - Add channel-neutral assistant request/response objects. Started.
 - Add internal users and channel identities before eXpress implementation. Started.
 - Add local knowledge ingestion for vendor decks, stock exports, prior proposals, tender answers, and delivery lessons learned.
-- Add broader test coverage for document extraction, prompt routing, and external error handling.
+- Add broader test coverage for document extraction, prompt routing, and external error handling. Prompt routing coverage is started for workflow commands.
 - Split long responses to respect Telegram message limits. Done for generated text delivery.
 - Add retry/backoff for Ollama.
 - Make STT language configurable through environment variables.

@@ -2,33 +2,23 @@ from __future__ import annotations
 
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
+from app.assistant import MODE_COMMANDS
 from app.config import SETTINGS, configure_logging
 from app.handlers import (
     approve,
-    audit,
     deny,
-    email,
-    followup,
     handle_document,
     handle_message,
     handle_voice,
     model,
     myid,
-    proposal,
     request_access,
     reset,
-    rewrite,
-    risk,
     revoke,
-    shell,
-    shorten,
     start,
     status,
-    surf,
-    tender,
+    TELEGRAM_MODE_HANDLERS,
     users,
-    vendor,
-    vip,
 )
 
 
@@ -89,18 +79,8 @@ def main():
     app.add_handler(CommandHandler("model", model))
     app.add_handler(CommandHandler("status", status))
 
-    app.add_handler(CommandHandler("email", email))
-    app.add_handler(CommandHandler("rewrite", rewrite))
-    app.add_handler(CommandHandler("shorten", shorten))
-    app.add_handler(CommandHandler("vip", vip))
-    app.add_handler(CommandHandler("surf", surf))
-    app.add_handler(CommandHandler("audit", audit))
-    app.add_handler(CommandHandler("proposal", proposal))
-    app.add_handler(CommandHandler("tender", tender))
-    app.add_handler(CommandHandler("vendor", vendor))
-    app.add_handler(CommandHandler("risk", risk))
-    app.add_handler(CommandHandler("shell", shell))
-    app.add_handler(CommandHandler("followup", followup))
+    for command in MODE_COMMANDS:
+        app.add_handler(CommandHandler(command, TELEGRAM_MODE_HANDLERS[command]))
 
     app.add_handler(MessageHandler(filters.VOICE, handle_voice))
     app.add_handler(MessageHandler(filters.Document.ALL, handle_document))

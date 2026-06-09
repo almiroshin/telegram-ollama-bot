@@ -80,7 +80,7 @@ Implemented modes:
 
 Next tasks:
 
-- add tests that verify every Telegram command maps to an existing prompt mode;
+- add tests that verify every Telegram command maps to an existing prompt mode. Done.
 - move prompts into structured files or templates;
 - add examples for common SURF scenarios: storage, servers, AI infrastructure, security, engineering systems, and modernization projects;
 - add a compact output policy for Telegram message length. Delivery chunking is done; prompt-level brevity rules remain.
@@ -117,7 +117,7 @@ Tasks:
 Readiness criteria:
 
 - Telegram behavior is preserved;
-- command routing can be tested without Telegram objects. Started.
+- command routing can be tested without Telegram objects. Done for workflow commands.
 - eXpress MVP scope is clear and backed by real API payloads;
 - new persistent data is channel-neutral. Started for user identities.
 

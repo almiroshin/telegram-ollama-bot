@@ -574,6 +574,22 @@ async def followup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await handle_mode(update, context, "followup")
 
 
+TELEGRAM_MODE_HANDLERS = {
+    "email": email,
+    "rewrite": rewrite,
+    "shorten": shorten,
+    "vip": vip,
+    "surf": surf,
+    "audit": audit,
+    "proposal": proposal,
+    "tender": tender,
+    "vendor": vendor,
+    "risk": risk,
+    "shell": shell,
+    "followup": followup,
+}
+
+
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if await reject_unauthorized(update):
         return
