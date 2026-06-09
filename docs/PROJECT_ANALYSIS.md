@@ -143,7 +143,7 @@ Minimum refactoring sequence:
 5. Add tests for helper functions. Started.
 6. Extract the Ollama client and Telegram handlers. Done.
 7. Add SQLite-backed conversation history. Done.
-8. Add channel adapter layer before eXpress implementation. Started with `app/assistant.py`.
+8. Add channel adapter layer before eXpress implementation. Started with `app/assistant.py` and channel identity storage.
 
 ## Near-Term Technical Tasks
 
@@ -153,7 +153,7 @@ Minimum refactoring sequence:
 - Add user-facing history inspection and long-term memory controls.
 - Add reusable proposal, audit, tender, and risk templates.
 - Add channel-neutral assistant request/response objects. Started.
-- Add internal users and channel identities before eXpress implementation.
+- Add internal users and channel identities before eXpress implementation. Started.
 - Add local knowledge ingestion for vendor decks, stock exports, prior proposals, tender answers, and delivery lessons learned.
 - Add broader test coverage for document extraction, prompt routing, and external error handling.
 - Split long responses to respect Telegram message limits.

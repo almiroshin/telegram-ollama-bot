@@ -125,6 +125,7 @@ Tasks:
 - extract Telegram-specific logic from `app/handlers.py` into `app/channels/telegram.py`;
 - introduce channel-neutral request handling in `app/assistant.py`. Started for text requests.
 - keep prompt modes, LLM access, history, users, and documents in shared modules;
+- add channel-neutral identity tables in `app/users.py`. Started.
 - add unit tests for command routing without Telegram objects. Started.
 
 Expected output:
@@ -174,14 +175,14 @@ Expected output:
 
 ## Access And Identity
 
-Telegram user IDs and eXpress user IDs are different identifiers. The assistant should introduce internal users:
+Telegram user IDs and eXpress user IDs are different identifiers. The assistant now initializes internal users and channel identities:
 
 ```text
 internal_users(id, display_name, role, status)
 channel_identities(internal_user_id, channel, channel_user_id, username)
 ```
 
-Until that model exists, eXpress integration should avoid mixing Telegram and eXpress users in the same `users` table without a migration plan.
+Existing Telegram users are synchronized into this model with their Telegram ID preserved as the internal ID, so current conversation history and owner commands remain stable. Future eXpress identities can link to the same internal user without overloading the Telegram-only `users` table.
 
 ## Security Requirements
 

@@ -260,17 +260,65 @@ class BotHelperTests(unittest.TestCase):
 
             self.assertEqual(requested.status, users.PENDING_STATUS)
             self.assertFalse(repository.is_active_user(200))
+            self.assertFalse(
+                repository.is_active_channel_user("telegram", "200")
+            )
+
+            telegram_identity = repository.get_channel_identity(
+                "telegram",
+                "200",
+            )
+
+            self.assertIsNotNone(telegram_identity)
+            self.assertEqual(telegram_identity.internal_user_id, 200)
+            self.assertEqual(
+                repository.get_internal_user_id("telegram", "200"),
+                200,
+            )
 
             approved = repository.approve_user(200, approved_by=100)
 
             self.assertEqual(approved.status, users.ACTIVE_STATUS)
             self.assertTrue(repository.is_active_user(200))
+            self.assertTrue(
+                repository.is_active_channel_user("telegram", "200")
+            )
+
+            express_identity = repository.link_channel_identity(
+                internal_user_id=200,
+                channel="express",
+                channel_user_id="express-user-200",
+                username="express_user",
+                display_name="Express User",
+            )
+
+            self.assertEqual(express_identity.internal_user_id, 200)
+            self.assertTrue(
+                repository.is_active_channel_user("express", "express-user-200")
+            )
 
             blocked = repository.block_user(200, blocked_by=100)
 
             self.assertEqual(blocked.status, users.BLOCKED_STATUS)
             self.assertFalse(repository.is_active_user(200))
+            self.assertFalse(
+                repository.is_active_channel_user("express", "express-user-200")
+            )
             self.assertEqual(repository.count_by_status()[users.BLOCKED_STATUS], 1)
+
+    def test_channel_user_access_uses_internal_identity(self):
+        access = self.import_module("app.access", owner_user_ids="100")
+
+        access.USER_REPOSITORY.approve_user(300, approved_by=100)
+        access.USER_REPOSITORY.link_channel_identity(
+            internal_user_id=300,
+            channel="express",
+            channel_user_id="express-300",
+        )
+
+        self.assertTrue(access.is_channel_user_allowed("telegram", "100"))
+        self.assertTrue(access.is_channel_user_allowed("express", "express-300"))
+        self.assertFalse(access.is_channel_user_allowed("express", "missing"))
 
     def test_parse_target_user_id(self):
         handlers = self.import_module("app.handlers")

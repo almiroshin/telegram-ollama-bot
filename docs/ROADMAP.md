@@ -109,7 +109,7 @@ Tasks:
 - define internal request/response objects independent of Telegram and eXpress SDK objects. Started in `app/assistant.py`.
 - move Telegram-specific code toward `app/channels/telegram.py`;
 - introduce a shared assistant core callable from any channel. Started for text requests.
-- add channel-neutral identity tables: `internal_users` and `channel_identities`;
+- add channel-neutral identity tables: `internal_users` and `channel_identities`. Started in `app/users.py`.
 - obtain exact eXpress BotX/API documentation and sample payloads for the target deployment;
 - decide between eXpress bot-only, SmartApp, or bot plus SmartApp UI;
 - add eXpress environment variables and deployment notes after API discovery.
@@ -119,7 +119,7 @@ Readiness criteria:
 - Telegram behavior is preserved;
 - command routing can be tested without Telegram objects. Started.
 - eXpress MVP scope is clear and backed by real API payloads;
-- new persistent data is channel-neutral.
+- new persistent data is channel-neutral. Started for user identities.
 
 ## Phase 3. Pre-Sales Case Workspace
 

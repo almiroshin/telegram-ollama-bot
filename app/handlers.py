@@ -101,11 +101,15 @@ def build_telegram_assistant_request(
 
     chat = getattr(update, "effective_chat", None)
     message = getattr(update, "message", None)
+    internal_user_id = (
+        USER_REPOSITORY.get_internal_user_id(TELEGRAM_CHANNEL, str(user_id))
+        or user_id
+    )
 
     return AssistantRequest(
         channel=TELEGRAM_CHANNEL,
         channel_user_id=str(user_id),
-        internal_user_id=user_id,
+        internal_user_id=internal_user_id,
         text=text,
         mode=mode,
         command=command,

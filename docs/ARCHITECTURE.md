@@ -46,7 +46,7 @@ flowchart LR
     O --> M
 ```
 
-The current implementation is still Telegram-first. Text messages and mode commands already pass through channel-neutral `AssistantRequest` and `AssistantResponse` models. The target design is a fuller channel adapter layer where Telegram and eXpress translate platform-specific events into internal assistant requests.
+The current implementation is still Telegram-first. Text messages and mode commands already pass through channel-neutral `AssistantRequest` and `AssistantResponse` models, and user storage now includes channel-neutral identity tables. The target design is a fuller channel adapter layer where Telegram and eXpress translate platform-specific events into internal assistant requests.
 
 ## Entry Point
 
@@ -85,9 +85,9 @@ Responsibilities:
 - `app/config.py` - environment parsing, typed settings, logging setup.
 - `app/assistant.py` - channel-neutral request/response models and text request handling.
 - `app/prompts.py` - system prompts and prompt modes.
-- `app/access.py` - owner checks and access decisions.
+- `app/access.py` - owner checks and channel-aware access decisions.
 - `app/history.py` - SQLite-backed conversation history repository.
-- `app/users.py` - SQLite-backed managed user repository.
+- `app/users.py` - SQLite-backed managed user repository and channel identity storage.
 - `app/llm.py` - Ollama Chat API client and history orchestration.
 - `app/stt.py` - `faster-whisper` model loading and transcription.
 - `app/documents.py` - text extraction from TXT/MD/PDF/DOCX and OCR fallback.
@@ -117,9 +117,9 @@ After each successful response, the user's persisted history is trimmed to `MAX_
 
 ## Access Request Flow
 
-Owners are currently configured through `OWNER_TELEGRAM_USER_IDS`. The legacy `ALLOWED_TELEGRAM_USER_IDS` is still supported as a direct allowlist and as an owner fallback when no owners are configured. eXpress integration will require channel-neutral identities before production use.
+Owners are currently configured through `OWNER_TELEGRAM_USER_IDS`. The legacy `ALLOWED_TELEGRAM_USER_IDS` is still supported as a direct allowlist and as an owner fallback when no owners are configured.
 
-Managed users are stored in the same SQLite database:
+Telegram-facing managed users are stored in the same SQLite database:
 
 ```text
 users(
@@ -137,10 +137,40 @@ users(
 )
 ```
 
+Channel-neutral identity storage is also initialized in the same database:
+
+```text
+internal_users(
+  id,
+  display_name,
+  role,
+  status,
+  created_at,
+  updated_at,
+  approved_at,
+  approved_by,
+  blocked_at,
+  blocked_by
+)
+
+channel_identities(
+  id,
+  internal_user_id,
+  channel,
+  channel_user_id,
+  username,
+  display_name,
+  created_at,
+  updated_at
+)
+```
+
+Existing rows in `users` are synchronized into `internal_users` and linked as Telegram identities. This preserves current Telegram commands while giving eXpress a safe future mapping path.
+
 Flow:
 
 1. An unknown Telegram user sends `/start` or `/request_access`.
-2. The bot stores or refreshes a `pending` user row.
+2. The bot stores or refreshes a `pending` user row and a Telegram channel identity.
 3. The bot sends owners a short approval message with `/approve <telegram_id>` and `/deny <telegram_id>`.
 4. An owner approves, denies, revokes, or lists users through Telegram commands.
 5. Active users can use normal bot commands; blocked and pending users cannot.

@@ -7,6 +7,7 @@ from app.users import USER_REPOSITORY
 
 
 LOGGER = logging.getLogger("telegram_ollama_bot")
+TELEGRAM_CHANNEL = "telegram"
 
 
 def get_owner_telegram_user_ids() -> set[int]:
@@ -25,14 +26,35 @@ def is_owner(user_id: int | None) -> bool:
 
 
 def is_user_allowed(user_id: int | None) -> bool:
+    return is_channel_user_allowed(
+        TELEGRAM_CHANNEL,
+        str(user_id) if user_id is not None else None,
+    )
+
+
+def is_channel_user_allowed(
+    channel: str,
+    channel_user_id: str | None,
+) -> bool:
     if not is_access_control_configured():
         return True
 
-    return (
-        is_owner(user_id)
-        or user_id in SETTINGS.allowed_telegram_user_ids
-        or USER_REPOSITORY.is_active_user(user_id)
-    )
+    if channel_user_id is None:
+        return False
+
+    if channel == TELEGRAM_CHANNEL:
+        try:
+            telegram_user_id = int(channel_user_id)
+        except ValueError:
+            telegram_user_id = None
+
+        if (
+            is_owner(telegram_user_id)
+            or telegram_user_id in SETTINGS.allowed_telegram_user_ids
+        ):
+            return True
+
+    return USER_REPOSITORY.is_active_channel_user(channel, channel_user_id)
 
 
 def get_update_user_id(update) -> int | None:
