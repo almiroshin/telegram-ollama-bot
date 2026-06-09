@@ -1,0 +1,25 @@
+# Secrets
+.env
+*.env
+
+# Logs
+*.log
+*.err
+logs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+
+# macOS
+.DS_Store
+
+# Runtime/database
+*.pid
+*.sqlite
+*.db
