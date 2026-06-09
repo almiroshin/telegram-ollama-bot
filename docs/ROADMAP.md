@@ -1,39 +1,39 @@
-# Роудмэп
+# Roadmap
 
-## Текущий статус
+## Current Status
 
-Проект находится в стадии рабочего персонального прототипа. Основные пользовательские сценарии уже есть: текстовый чат, режимы промптов, голос, документы, PDF OCR. Главный следующий этап - превратить прототип в поддерживаемый сервис с контролем доступа, тестами, модульной структурой и устойчивой обработкой тяжелых задач.
+The project is a working personal prototype. Core workflows are already available: text chat, prompt modes, voice transcription, document analysis, and PDF OCR. The next major step is to turn the prototype into a maintainable service with access control, tests, modular structure, and reliable handling of heavy workloads.
 
-## Принципы развития
+## Development Principles
 
-- Сначала безопасность и управляемость, затем новые функции.
-- Не ломать текущий быстрый Telegram UX.
-- Сохранять локальную обработку как базовое преимущество проекта.
-- Развивать документный сценарий в сторону RAG, а не простого увеличения лимита контекста.
-- Добавлять тесты вокруг логики, которая легко ломается: routing, parsing, лимиты, ошибки внешних систем.
+- Prioritize security and operability before adding more features.
+- Preserve the fast Telegram-based user experience.
+- Keep local processing as the default strength of the project.
+- Evolve document workflows toward RAG instead of only increasing context size.
+- Add tests around logic that is easy to break: routing, parsing, limits, and external errors.
 
-## Этап 0. Стабилизация
+## Phase 0. Stabilization
 
-Цель: сделать текущий бот безопаснее и воспроизводимее без крупной переделки.
+Goal: make the current bot safer and easier to reproduce without a major rewrite.
 
-- Добавить allowlist Telegram ID.
-- Скрыть подробные ошибки от обычного ответа пользователю, оставив диагностику в логах.
-- Добавить `logging` вместо `print`.
-- Добавить `README`, `.env.example`, `requirements.txt` и эксплуатационные инструкции.
-- Добавить базовые smoke checks: синтаксис, импорт конфигурации, unit-тесты чистых функций.
-- Зафиксировать минимальную поддерживаемую версию Python.
+- Add a Telegram user allowlist.
+- Hide low-level errors from normal user responses and write details to logs.
+- Replace `print` with `logging`.
+- Keep `README`, `.env.example`, `requirements.txt`, and operations documentation up to date.
+- Add basic smoke checks: syntax, configuration import, and unit tests for pure functions.
+- Document the minimum supported Python version.
 
-Критерий готовности:
+Readiness criteria:
 
-- новый пользователь может поднять бота по документации;
-- неизвестный Telegram-пользователь не может пользоваться ботом;
-- локальная проверка проходит одной командой.
+- a new user can start the bot from the documentation;
+- unknown Telegram users cannot use the bot;
+- local verification can be run with one command.
 
-## Этап 1. Модульная структура
+## Phase 1. Modular Structure
 
-Цель: убрать рост `bot.py` и отделить доменную логику от Telegram handlers.
+Goal: stop `bot.py` from becoming the whole application and separate domain logic from Telegram handlers.
 
-Предлагаемая структура:
+Suggested structure:
 
 ```text
 app/
@@ -49,137 +49,137 @@ app/
 tests/
 ```
 
-Задачи:
+Tasks:
 
-- Вынести env-конфигурацию в typed settings.
-- Вынести prompts в отдельный модуль.
-- Вынести Ollama client.
-- Вынести document extraction и STT.
-- Добавить unit-тесты без реального Telegram/Ollama.
+- Move environment configuration into typed settings.
+- Move prompts into a separate module.
+- Extract the Ollama client.
+- Extract document handling and STT.
+- Add unit tests that do not require real Telegram or Ollama.
 
-Критерий готовности:
+Readiness criteria:
 
-- `bot.py` остается тонкой точкой входа;
-- parsing документов можно тестировать отдельно;
-- LLM-клиент можно мокать.
+- `bot.py` is only a thin entry point;
+- document parsing can be tested independently;
+- the LLM client can be mocked.
 
-## Этап 2. Персистентная память
+## Phase 2. Persistent Memory
 
-Цель: сохранять полезный контекст между перезапусками и управлять им.
+Goal: keep useful context across restarts and make it manageable.
 
-Варианты:
+Options:
 
-- SQLite для истории сообщений и настроек пользователей.
-- Простая таблица `messages` с `user_id`, `role`, `content`, `created_at`.
-- Команды `/history`, `/reset`, позже `/memory`.
+- SQLite for message history and user settings.
+- A simple `messages` table with `user_id`, `role`, `content`, and `created_at`.
+- Commands such as `/history`, `/reset`, and later `/memory`.
 
-Задачи:
+Tasks:
 
-- Добавить repository-слой для истории.
-- Ограничить историю по количеству сообщений и/или токенам.
-- Добавить миграции или простой bootstrap schema.
-- Разделить краткосрочную историю и долговременные пользовательские факты.
+- Add a repository layer for history.
+- Limit history by message count and/or tokens.
+- Add migrations or a simple schema bootstrap.
+- Separate short-term chat history from long-term user facts.
 
-Критерий готовности:
+Readiness criteria:
 
-- перезапуск процесса не теряет историю;
-- пользователь может очистить свою историю;
-- размер базы контролируется.
+- process restart does not erase history;
+- users can clear their own history;
+- database size is controlled.
 
-## Этап 3. Очереди для тяжелых задач
+## Phase 3. Queues For Heavy Work
 
-Цель: не блокировать Telegram handlers на OCR, STT и длинных LLM-запросах.
+Goal: avoid blocking Telegram handlers with OCR, STT, and long LLM requests.
 
-Задачи:
+Tasks:
 
-- Ввести фоновые task workers.
-- Ограничить параллелизм OCR/STT.
-- Добавить user-facing статусы: "в очереди", "обрабатываю", "готово", "ошибка".
-- Добавить timeout и cancellation policy.
+- Introduce background task workers.
+- Limit OCR/STT concurrency.
+- Add user-facing statuses: queued, processing, done, failed.
+- Add timeout and cancellation policy.
 
-Критерий готовности:
+Readiness criteria:
 
-- несколько тяжелых документов не подвешивают бота;
-- пользователь получает понятный статус обработки;
-- ресурсы CPU/RAM ограничены.
+- multiple heavy documents do not stall the bot;
+- users receive clear processing status;
+- CPU/RAM usage is bounded.
 
-## Этап 4. RAG по документам
+## Phase 4. Document RAG
 
-Цель: анализировать длинные документы без обрезания первой части.
+Goal: analyze long documents without truncating only the first part.
 
-Минимальная версия:
+Minimum version:
 
-- разбивка текста на chunks;
+- text chunking;
 - embeddings;
-- локальное vector store;
-- retrieval релевантных фрагментов под вопрос;
-- ответы с указанием фрагментов/страниц.
+- local vector store;
+- retrieval of relevant fragments for a question;
+- answers that cite fragments or pages.
 
-Задачи:
+Tasks:
 
-- Сохранять загруженные документы и метаданные.
-- Выделять страницы PDF при прямом parsing и OCR.
-- Добавить команды: `/doc_summary`, `/ask_doc`, `/forget_docs`.
-- Добавить лимиты хранения.
+- Store uploaded documents and metadata.
+- Preserve page references for direct PDF parsing and OCR.
+- Add commands: `/doc_summary`, `/ask_doc`, `/forget_docs`.
+- Add storage limits.
 
-Критерий готовности:
+Readiness criteria:
 
-- длинный документ анализируется полностью;
-- можно задавать вопросы по ранее загруженному документу;
-- бот явно сообщает, на каких фрагментах основан ответ.
+- long documents can be analyzed end to end;
+- users can ask questions about previously uploaded documents;
+- the bot states which fragments were used for the answer.
 
-## Этап 5. Качество ответов и режимы
+## Phase 5. Response Quality And Modes
 
-Цель: сделать режимы более управляемыми и повторяемыми.
+Goal: make prompt modes more controllable and repeatable.
 
-Задачи:
+Tasks:
 
-- Вынести prompts в файлы или structured templates.
-- Добавить режимы для КП, ТЗ, протокола встречи, анализа закупки, резюме звонка.
-- Добавить compact response policy для Telegram.
-- Добавить post-processing длинных ответов с разбиением на сообщения.
-- Добавить команду `/mode` для выбора режима по умолчанию.
+- Move prompts into files or structured templates.
+- Add modes for commercial proposals, technical specifications, meeting minutes, procurement analysis, and call summaries.
+- Add a compact response policy for Telegram.
+- Add post-processing for long responses with message splitting.
+- Add `/mode` to select the default mode.
 
-Критерий готовности:
+Readiness criteria:
 
-- режимы можно менять без правки core-кода;
-- длинные ответы корректно доставляются в Telegram;
-- качество формата стабильно на типовых задачах.
+- prompt modes can be changed without editing core code;
+- long responses are delivered correctly in Telegram;
+- output format is stable on common tasks.
 
-## Этап 6. Observability и сопровождение
+## Phase 6. Observability And Maintenance
 
-Цель: понимать, что происходит в продакшене.
+Goal: understand what is happening in production-like usage.
 
-Задачи:
+Tasks:
 
-- Структурированные логи.
-- Метрики: количество запросов, ошибки Ollama, длительность STT/OCR/LLM.
-- Healthcheck endpoint или отдельная команда диагностики.
-- Ротация логов.
-- Runbook для восстановления.
+- Structured logs.
+- Metrics: request count, Ollama errors, STT/OCR/LLM latency.
+- Healthcheck endpoint or a dedicated diagnostics command.
+- Log rotation.
+- Recovery runbook.
 
-Критерий готовности:
+Readiness criteria:
 
-- проблему можно диагностировать по логам;
-- видно, где узкое место: Telegram, Ollama, STT, OCR или parsing.
+- issues can be diagnosed from logs;
+- bottlenecks are visible across Telegram, Ollama, STT, OCR, and parsing.
 
 ## Backlog
 
-- Dockerfile и docker-compose.
-- Поддержка изображений как отдельных вложений.
-- Поддержка `.xlsx`, `.pptx`, `.rtf`.
-- Разделение прав: owner/admin/user.
-- Rate limiting на пользователя.
-- Автоматическое резюмирование длинной истории.
-- Интеграция с календарем или задачником.
-- Экспорт результата в `.docx` или `.md`.
-- Web UI для управления prompts, пользователями и документами.
-- Набор regression prompts для проверки качества ответов после смены модели.
+- Dockerfile and docker-compose.
+- Image attachments as first-class input.
+- Support for `.xlsx`, `.pptx`, and `.rtf`.
+- Role separation: owner/admin/user.
+- Per-user rate limiting.
+- Automatic summarization of long history.
+- Calendar or task tracker integration.
+- Export results to `.docx` or `.md`.
+- Web UI for prompts, users, and documents.
+- Regression prompt suite for evaluating model changes.
 
-## Приоритеты на ближайший спринт
+## Next Sprint Priorities
 
-1. Allowlist Telegram ID.
-2. `logging` вместо `print`.
-3. Модульная структура `app/`.
-4. Unit-тесты для `trim_document_text()`, `extract_text_from_txt()`, route выбора режима.
-5. Нормальная обработка ошибок Ollama, STT и OCR.
+1. Telegram user allowlist.
+2. `logging` instead of `print`.
+3. Modular `app/` structure.
+4. Unit tests for `trim_document_text()`, `extract_text_from_txt()`, and prompt mode routing.
+5. Robust error handling for Ollama, STT, and OCR.

@@ -1,8 +1,8 @@
-# Эксплуатация
+# Operations
 
-## Локальный запуск
+## Local Run
 
-1. Установить системные зависимости.
+1. Install system dependencies.
 
 macOS:
 
@@ -17,16 +17,16 @@ sudo apt-get update
 sudo apt-get install -y poppler-utils tesseract-ocr tesseract-ocr-rus
 ```
 
-2. Подготовить Ollama.
+2. Prepare Ollama.
 
 ```bash
 ollama pull qwen3:8b
 ollama serve
 ```
 
-Если Ollama уже запущена как сервис, отдельный `ollama serve` не нужен.
+If Ollama is already running as a service, a separate `ollama serve` process is not required.
 
-3. Подготовить Python-окружение.
+3. Prepare the Python environment.
 
 ```bash
 python3 -m venv .venv
@@ -34,19 +34,19 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-4. Создать `.env`.
+4. Create `.env`.
 
 ```bash
 cp .env.example .env
 ```
 
-Минимально нужно заполнить:
+At minimum, set:
 
 ```text
 TELEGRAM_TOKEN=...
 ```
 
-5. Запустить бота.
+5. Start the bot.
 
 ```bash
 set -a
@@ -55,153 +55,153 @@ set +a
 python bot.py
 ```
 
-## Проверка после запуска
+## Post-Start Check
 
-В Telegram:
+In Telegram:
 
 ```text
 /status
 ```
 
-Ожидаемый результат:
+Expected result:
 
-- `Статус: работает`;
-- корректная модель Ollama;
-- корректные лимиты файлов и OCR;
-- корректные пути `POPPLER_PATH` и `TESSERACT_CMD`.
+- `Status: works` or the current localized equivalent from the bot;
+- the expected Ollama model;
+- correct file and OCR limits;
+- correct `POPPLER_PATH` and `TESSERACT_CMD` paths.
 
-Локальная проверка Ollama:
+Local Ollama check:
 
 ```bash
 curl http://127.0.0.1:11434/api/tags
 ```
 
-Проверка Tesseract:
+Tesseract check:
 
 ```bash
 tesseract --list-langs
 ```
 
-Для текущего `OCR_LANG=rus+eng` в списке должны быть `rus` и `eng`.
+For the current `OCR_LANG=rus+eng`, the list should contain `rus` and `eng`.
 
-## Переменные окружения
+## Environment Variables
 
-### Telegram и LLM
+### Telegram And LLM
 
-- `TELEGRAM_TOKEN` - обязательный токен бота.
-- `OLLAMA_URL` - URL chat endpoint, обычно `http://127.0.0.1:11434/api/chat`.
-- `OLLAMA_MODEL` - модель, например `qwen3:8b`, `llama3.1:8b`, `mistral`.
-- `MAX_HISTORY_MESSAGES` - сколько последних сообщений держать в контексте.
+- `TELEGRAM_TOKEN` - required bot token.
+- `OLLAMA_URL` - chat endpoint, usually `http://127.0.0.1:11434/api/chat`.
+- `OLLAMA_MODEL` - model name, for example `qwen3:8b`, `llama3.1:8b`, or `mistral`.
+- `MAX_HISTORY_MESSAGES` - number of recent messages kept in context.
 
-### Голос
+### Voice
 
-- `WHISPER_MODEL_SIZE` - размер модели: `tiny`, `base`, `small`, `medium`, `large-v3`.
-- `WHISPER_DEVICE` - `cpu`, `cuda` или `auto`.
-- `WHISPER_COMPUTE_TYPE` - для CPU обычно `int8`, для GPU часто `float16`.
+- `WHISPER_MODEL_SIZE` - model size: `tiny`, `base`, `small`, `medium`, `large-v3`.
+- `WHISPER_DEVICE` - `cpu`, `cuda`, or `auto`.
+- `WHISPER_COMPUTE_TYPE` - typically `int8` for CPU and `float16` for GPU.
 
-### Документы и OCR
+### Documents And OCR
 
-- `MAX_FILE_SIZE_MB` - ограничение размера входящего файла.
-- `MAX_DOCUMENT_CHARS` - ограничение текста, отправляемого в LLM.
-- `OCR_DPI` - качество рендера PDF перед OCR.
-- `OCR_LANG` - языки Tesseract, например `rus+eng`.
-- `MAX_OCR_PAGES` - максимум страниц для OCR.
-- `POPPLER_PATH` - путь к Poppler. На Apple Silicon Homebrew обычно `/opt/homebrew/bin`.
-- `TESSERACT_CMD` - путь к Tesseract.
+- `MAX_FILE_SIZE_MB` - incoming file size limit.
+- `MAX_DOCUMENT_CHARS` - extracted text limit before sending content to the LLM.
+- `OCR_DPI` - PDF rendering quality before OCR.
+- `OCR_LANG` - Tesseract languages, for example `rus+eng`.
+- `MAX_OCR_PAGES` - maximum PDF pages processed by OCR.
+- `POPPLER_PATH` - path to Poppler. Apple Silicon Homebrew usually uses `/opt/homebrew/bin`.
+- `TESSERACT_CMD` - path to the Tesseract binary.
 
-## Производительность
+## Performance
 
-Самые тяжелые операции:
+The most expensive operations are:
 
-- первый запуск `faster-whisper`, потому что модель загружается в память;
-- OCR PDF-сканов;
-- длинные запросы к Ollama.
+- the first `faster-whisper` call, because the model is loaded into memory;
+- OCR for scanned PDFs;
+- long Ollama requests.
 
-Практические настройки:
+Practical tuning:
 
-- Для слабого CPU оставить `WHISPER_MODEL_SIZE=small` и `WHISPER_COMPUTE_TYPE=int8`.
-- Для более быстрого STT использовать GPU и `WHISPER_COMPUTE_TYPE=float16`.
-- Если OCR медленный, уменьшить `MAX_OCR_PAGES` или `OCR_DPI`.
-- Если Ollama отвечает медленно, выбрать модель меньшего размера.
+- On weak CPUs, keep `WHISPER_MODEL_SIZE=small` and `WHISPER_COMPUTE_TYPE=int8`.
+- For faster STT, use a GPU and `WHISPER_COMPUTE_TYPE=float16`.
+- If OCR is slow, reduce `MAX_OCR_PAGES` or `OCR_DPI`.
+- If Ollama is slow, use a smaller model.
 
-## Безопасность
+## Security
 
-Сейчас в коде нет allowlist пользователей. До эксплуатации вне личного окружения нужно добавить проверку `update.effective_user.id`.
+The current code does not include a Telegram user allowlist. Before running the bot outside a personal environment, add a check for `update.effective_user.id`.
 
-Рекомендуемая модель:
+Recommended configuration:
 
 ```text
 ALLOWED_TELEGRAM_USER_IDS=123,456
 ```
 
-И поведение:
+Expected behavior:
 
-- команды и сообщения от неизвестных пользователей отклонять;
-- не раскрывать конфигурацию неизвестным пользователям;
-- не отправлять в ответ подробные stack traces.
+- reject commands and messages from unknown users;
+- do not expose configuration to unknown users;
+- do not send stack traces or low-level errors to users.
 
-Также не стоит коммитить `.env`: он уже закрыт в [.gitignore](../.gitignore).
+Do not commit `.env`; it is already ignored in [.gitignore](../.gitignore).
 
-## Диагностика проблем
+## Troubleshooting
 
-### `RuntimeError: Не задан TELEGRAM_TOKEN`
+### Missing `TELEGRAM_TOKEN`
 
-Не экспортирована переменная `TELEGRAM_TOKEN`.
+`TELEGRAM_TOKEN` is not exported.
 
-Проверка:
+Check it with:
 
 ```bash
 echo "$TELEGRAM_TOKEN"
 ```
 
-### `/status` возвращает ошибку Ollama
+### `/status` returns an Ollama error
 
-Проверить, что Ollama запущена:
+Check that Ollama is running:
 
 ```bash
 curl http://127.0.0.1:11434/api/tags
 ```
 
-Проверить, что модель скачана:
+Check that the model is available:
 
 ```bash
 ollama list
 ```
 
-### OCR не работает
+### OCR Does Not Work
 
-Проверить Poppler:
+Check Poppler:
 
 ```bash
 which pdftoppm
 ```
 
-Проверить Tesseract:
+Check Tesseract:
 
 ```bash
 which tesseract
 tesseract --list-langs
 ```
 
-Если Homebrew стоит не в `/opt/homebrew`, обновить `POPPLER_PATH` и `TESSERACT_CMD`.
+If Homebrew is not installed under `/opt/homebrew`, update `POPPLER_PATH` and `TESSERACT_CMD`.
 
-### Голос распознается медленно
+### Voice Transcription Is Slow
 
-Снизить размер модели:
+Use a smaller model:
 
 ```text
 WHISPER_MODEL_SIZE=base
 ```
 
-Или оставить `small`, но учитывать, что первый voice-запрос будет самым долгим из-за загрузки модели.
+Or keep `small`, but expect the first voice request to be slower because the model is loaded on demand.
 
-## Запуск как сервис
+## Running As A Service
 
-Для постоянной эксплуатации лучше запускать процесс через `launchd`, `systemd`, `supervisord` или Docker. Минимальные требования к сервису:
+For long-running usage, run the process with `launchd`, `systemd`, `supervisord`, or Docker. Minimum service requirements:
 
-- автозапуск после перезагрузки;
-- рестарт при падении;
-- запись stdout/stderr в лог;
-- отдельный пользователь без лишних прав;
-- отдельный каталог для `.env`;
-- лимиты ресурсов для OCR/STT.
+- start automatically after reboot;
+- restart on failure;
+- write stdout/stderr to logs;
+- run as a dedicated user with limited privileges;
+- keep `.env` in a controlled directory;
+- set resource limits for OCR/STT workloads.

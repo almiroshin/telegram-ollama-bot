@@ -1,76 +1,76 @@
-# Анализ проекта
+# Project Analysis
 
-## Краткое резюме
+## Executive Summary
 
-Проект - персональный локальный AI-ассистент в Telegram. Он уже закрывает практичные сценарии: деловая переписка, редактура, follow-up, помощь по shell, голосовые заметки и документы. Реализация компактная и понятная, но сейчас это скорее рабочий прототип, чем сервис, готовый к длительной эксплуатации.
+This project is a personal local AI assistant exposed through Telegram. It already covers practical workflows: business writing, rewriting, follow-ups, shell help, voice notes, and document analysis. The implementation is compact and easy to understand, but it is currently closer to a working prototype than a production-ready service.
 
-## Что уже хорошо
+## What Works Well
 
-- Простая архитектура без лишней инфраструктуры.
-- Все ключевые зависимости локальные: Ollama, faster-whisper, Tesseract.
-- Есть несколько полезных режимов, заточенных под реальные деловые задачи.
-- Голосовые сообщения и документы обрабатываются в одном Telegram-интерфейсе.
-- Для PDF предусмотрен fallback на OCR.
-- Конфигурация вынесена в environment variables.
-- Есть лимиты на размер файла, объем текста документа и количество OCR-страниц.
+- Simple architecture with very little infrastructure.
+- Key processing dependencies can run locally: Ollama, `faster-whisper`, and Tesseract.
+- Prompt modes match practical business workflows.
+- Voice messages and documents are available through the same Telegram interface.
+- PDF processing has an OCR fallback.
+- Runtime configuration is controlled through environment variables.
+- File size, document text, and OCR page limits are already present.
 
-## Функциональные возможности
+## Functional Coverage
 
-| Область | Статус | Комментарий |
+| Area | Status | Notes |
 | --- | --- | --- |
-| Текстовый чат | Есть | Через Ollama Chat API. |
-| Режимы промптов | Есть | Захардкожены в `MODES`. |
-| История | Есть | In-memory, по Telegram user ID. |
-| Голос | Есть | `faster-whisper`, русский язык. |
-| TXT/MD | Есть | Несколько кодировок. |
-| PDF | Есть | Прямой текстовый слой через `pypdf`. |
-| PDF OCR | Есть | `pdf2image` + Tesseract. |
-| DOCX | Есть | Параграфы и таблицы. |
-| Доступ пользователей | Нет | Нужен allowlist. |
-| Персистентность | Нет | История теряется при restart. |
-| Тесты | Нет | Нужны хотя бы unit-тесты чистых функций. |
-| RAG | Нет | Длинные документы сейчас обрезаются. |
+| Text chat | Available | Through the Ollama Chat API. |
+| Prompt modes | Available | Hardcoded in `MODES`. |
+| History | Available | In-memory, keyed by Telegram user ID. |
+| Voice | Available | `faster-whisper`, Russian language. |
+| TXT/MD | Available | Multiple fallback encodings. |
+| PDF | Available | Direct text extraction through `pypdf`. |
+| PDF OCR | Available | `pdf2image` + Tesseract. |
+| DOCX | Available | Paragraphs and tables. |
+| User access control | Missing | A user allowlist is needed. |
+| Persistence | Missing | History is lost on restart. |
+| Tests | Missing | At least pure function unit tests are needed. |
+| RAG | Missing | Long documents are currently truncated. |
 
-## Сильные стороны
+## Strengths
 
-- Быстрый запуск: один файл, минимум moving parts.
-- Локальность: данные не обязаны уходить во внешние LLM API.
-- Практичная направленность prompt modes.
-- Наличие OCR расширяет полезность для сканов и закупочной документации.
+- Fast to start and easy to inspect: one file and few moving parts.
+- Local-first design: data does not need to leave the host machine for external LLM APIs.
+- Business-focused prompt modes are already useful.
+- OCR makes the bot useful for scans and procurement-style documents.
 
-## Основные риски
+## Main Risks
 
-### 1. Нет контроля доступа
+### 1. No Access Control
 
-Сейчас любой пользователь, который сможет написать боту, получит доступ к локальной LLM и обработке файлов. Для персонального бота это главный риск.
+Anyone who can message the bot can use the local LLM and document processing capabilities. For a personal bot, this is the highest operational risk.
 
-Рекомендация: добавить `ALLOWED_TELEGRAM_USER_IDS` и проверять его в начале каждого handler.
+Recommendation: add `ALLOWED_TELEGRAM_USER_IDS` and check it at the beginning of every handler.
 
-### 2. Один большой файл
+### 2. One Large File
 
-`bot.py` содержит все: конфиг, prompts, handlers, LLM client, STT, OCR и парсинг документов. Это нормально для прототипа, но будет мешать тестированию и развитию.
+`bot.py` contains configuration, prompts, handlers, the LLM client, STT, OCR, and document parsing. This is acceptable for a prototype, but it will slow down testing and development as the project grows.
 
-Рекомендация: вынести код в модули `app/config.py`, `app/llm.py`, `app/documents.py`, `app/stt.py`, `app/telegram_handlers.py`.
+Recommendation: split the code into `app/config.py`, `app/llm.py`, `app/documents.py`, `app/stt.py`, and `app/telegram_handlers.py`.
 
-### 3. Тяжелые операции внутри handlers
+### 3. Heavy Work Inside Handlers
 
-OCR и STT могут занимать заметное время и блокировать обработку. При одном пользователе это приемлемо, при росте нагрузки станет проблемой.
+OCR and STT can take noticeable time and currently run directly inside handlers. This is acceptable for one user, but it will become a problem as workload grows.
 
-Рекомендация: добавить очередь задач или ограниченный background executor.
+Recommendation: add a task queue or a bounded background executor.
 
-### 4. Ошибки показываются напрямую
+### 4. Raw Errors Are Sent To Users
 
-Ответы вида `Ошибка при обращении к Ollama: {e}` полезны при разработке, но в эксплуатации могут раскрывать детали среды.
+Responses that include raw Ollama exception details are useful during development, but they can reveal environment details in regular usage.
 
-Рекомендация: пользователю отдавать короткую безопасную ошибку, детали писать в лог.
+Recommendation: send short safe errors to users and write details to logs.
 
-### 5. Обрезание длинных документов
+### 5. Long Documents Are Truncated
 
-`MAX_DOCUMENT_CHARS` защищает контекст, но анализируется только первая часть документа. Для ТЗ, закупок и договоров это может давать неверную картину.
+`MAX_DOCUMENT_CHARS` protects the context window, but only the first part of a document is analyzed. For specifications, tenders, and contracts, this can produce incomplete conclusions.
 
-Рекомендация: добавить chunking/RAG или хотя бы map-reduce summary по частям.
+Recommendation: add chunking/RAG or at least a map-reduce summarization flow.
 
-## Рекомендуемая целевая архитектура
+## Recommended Target Architecture
 
 ```text
 app/
@@ -92,25 +92,25 @@ tests/
   test_access.py
 ```
 
-Минимальная последовательность рефакторинга:
+Minimum refactoring sequence:
 
-1. Добавить `requirements.txt`, `.env.example`, документацию.
-2. Добавить allowlist без изменения общей структуры.
-3. Вынести чистые функции document parsing в отдельный модуль.
-4. Добавить тесты на эти функции.
-5. Вынести Ollama client и Telegram handlers.
+1. Keep `requirements.txt`, `.env.example`, and documentation current.
+2. Add a user allowlist without changing the overall structure.
+3. Move pure document parsing functions into a separate module.
+4. Add tests for those functions.
+5. Extract the Ollama client and Telegram handlers.
 
-## Ближайшие технические задачи
+## Near-Term Technical Tasks
 
-- Добавить allowlist Telegram пользователей.
-- Добавить нормальный logger.
-- Добавить `.env` загрузку через `python-dotenv` или явно документировать shell-export.
-- Добавить `pytest`.
-- Разбить длинные ответы под лимиты Telegram.
-- Добавить retry/backoff для Ollama.
-- Добавить настройку языка STT через env.
-- Добавить обработку PDF с частично пустым текстовым слоем: прямой parsing + OCR только пустых страниц.
+- Add a Telegram user allowlist.
+- Add a proper logger.
+- Add `.env` loading through `python-dotenv` or explicitly document shell export.
+- Add `pytest`.
+- Split long responses to respect Telegram message limits.
+- Add retry/backoff for Ollama.
+- Make STT language configurable through environment variables.
+- Improve PDF handling with partial OCR: direct parsing plus OCR only for empty pages.
 
-## Вывод
+## Conclusion
 
-Проект уже полезен как персональный локальный assistant. Главная инженерная задача - не расширять функции хаотично, а сначала закрепить основание: доступ, структура, тесты, логи и обработка тяжелых задач. После этого развитие в сторону RAG и персистентной памяти будет значительно проще.
+The project is already useful as a personal local assistant. The main engineering priority is to stabilize the foundation before adding more features: access control, structure, tests, logs, and heavy-task handling. After that, RAG and persistent memory will be much easier to add safely.

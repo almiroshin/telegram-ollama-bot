@@ -1,20 +1,20 @@
-# Архитектура
+# Architecture
 
-## Назначение
+## Purpose
 
-Проект реализует персонального Telegram-ассистента, который работает поверх локальной Ollama-модели. Telegram используется как пользовательский интерфейс, а вся обработка текста, голоса и документов выполняется локально на машине, где запущен бот.
+The project implements a personal Telegram assistant backed by a local Ollama model. Telegram provides the user interface, while text generation, voice transcription, and document processing run locally on the machine that hosts the bot.
 
-## Компоненты
+## Components
 
 ```mermaid
 flowchart LR
-    U["Пользователь Telegram"] --> TG["Telegram Bot API"]
+    U["Telegram user"] --> TG["Telegram Bot API"]
     TG --> H["python-telegram-bot handlers"]
-    H --> M["Режимы и история диалога"]
+    H --> M["Prompt modes and chat history"]
     M --> O["Ollama Chat API"]
     O --> M
     H --> V["faster-whisper STT"]
-    H --> D["Извлечение текста из документов"]
+    H --> D["Document text extraction"]
     D --> PDF["pypdf"]
     D --> DOCX["python-docx"]
     D --> OCR["pdf2image + Poppler + Tesseract"]
@@ -23,28 +23,28 @@ flowchart LR
     M --> TG
 ```
 
-## Точки входа
+## Entry Point
 
-Основная точка входа - `main()` в [bot.py](../bot.py). Она:
+The main entry point is `main()` in [bot.py](../bot.py). It:
 
-- проверяет наличие `TELEGRAM_TOKEN`;
-- печатает текущую конфигурацию;
-- создает `Application` из `python-telegram-bot`;
-- регистрирует command handlers и message handlers;
-- запускает polling через `app.run_polling()`.
+- validates that `TELEGRAM_TOKEN` is set;
+- prints the current runtime configuration;
+- creates a `python-telegram-bot` `Application`;
+- registers command handlers and message handlers;
+- starts polling with `app.run_polling()`.
 
-## Основной поток текстового запроса
+## Text Request Flow
 
-1. Пользователь отправляет текст или команду.
-2. Handler выбирает режим: `default`, `email`, `rewrite`, `shorten`, `vip`, `surf`, `shell`, `followup`.
-3. `ask_ollama()` собирает сообщения:
-   - system prompt режима;
-   - последние элементы истории пользователя;
-   - новый пользовательский текст.
-4. Запрос уходит в `OLLAMA_URL` методом `POST`.
-5. Ответ сохраняется в `USER_HISTORY` и отправляется пользователю.
+1. The user sends a text message or command.
+2. The handler selects a prompt mode: `default`, `email`, `rewrite`, `shorten`, `vip`, `surf`, `shell`, or `followup`.
+3. `ask_ollama()` builds the request:
+   - the system prompt for the selected mode;
+   - the user's recent history;
+   - the new user message.
+4. The request is sent to `OLLAMA_URL` with `POST`.
+5. The response is stored in `USER_HISTORY` and sent back to Telegram.
 
-История хранится в памяти:
+History is stored in process memory:
 
 ```text
 USER_HISTORY[user_id] = [
@@ -53,48 +53,48 @@ USER_HISTORY[user_id] = [
 ]
 ```
 
-После каждого ответа история обрезается до `MAX_HISTORY_MESSAGES`.
+After each response, history is trimmed to `MAX_HISTORY_MESSAGES`.
 
-## Голосовые сообщения
+## Voice Messages
 
-Поток `handle_voice()`:
+`handle_voice()` follows this flow:
 
-1. Скачивает Telegram voice file во временную директорию.
-2. Лениво загружает `WhisperModel` через `get_stt_model()`.
-3. Распознает речь в `transcribe_audio_file()`.
-4. Формирует отдельный prompt для режима `voice`.
-5. Отправляет пользователю расшифровку и обработанный результат.
+1. Download the Telegram voice file into a temporary directory.
+2. Lazily initialize `WhisperModel` through `get_stt_model()`.
+3. Transcribe the audio in `transcribe_audio_file()`.
+4. Build a dedicated prompt for the `voice` mode.
+5. Send both the transcript and the processed summary back to the user.
 
-Модель STT хранится в глобальной переменной `STT_MODEL`, чтобы не загружать ее заново на каждое голосовое сообщение.
+The STT model is stored in the global `STT_MODEL` variable so it is not reloaded for every voice message.
 
-## Документы
+## Documents
 
-Поток `handle_document()`:
+`handle_document()` follows this flow:
 
-1. Проверяет размер файла через `MAX_FILE_SIZE_MB`.
-2. Проверяет расширение: `.txt`, `.md`, `.pdf`, `.docx`.
-3. Скачивает файл во временную директорию.
-4. Вызывает `extract_text_from_file()`.
-5. Обрезает текст через `trim_document_text()`, если превышен `MAX_DOCUMENT_CHARS`.
-6. Отправляет извлеченный текст в Ollama в режиме `document`.
+1. Validate file size with `MAX_FILE_SIZE_MB`.
+2. Validate the extension: `.txt`, `.md`, `.pdf`, or `.docx`.
+3. Download the file into a temporary directory.
+4. Call `extract_text_from_file()`.
+5. Trim extracted text with `trim_document_text()` if it exceeds `MAX_DOCUMENT_CHARS`.
+6. Send the prepared text to Ollama using the `document` mode.
 
-Извлечение текста:
+Text extraction strategy:
 
-- `.txt`, `.md` - чтение с перебором кодировок `utf-8`, `utf-8-sig`, `cp1251`, `latin-1`.
-- `.docx` - параграфы и таблицы через `python-docx`.
-- `.pdf` - сначала прямое извлечение через `pypdf`; если текстовый слой пустой, OCR.
-- OCR - рендер страниц через `pdf2image`, затем распознавание через `pytesseract`.
+- `.txt`, `.md` - read with fallback encodings: `utf-8`, `utf-8-sig`, `cp1251`, `latin-1`.
+- `.docx` - extract paragraphs and tables through `python-docx`.
+- `.pdf` - first try direct extraction through `pypdf`; if the text layer is empty, run OCR.
+- OCR - render pages through `pdf2image`, then recognize text with `pytesseract`.
 
-## Конфигурационная модель
+## Configuration Model
 
-Конфигурация читается из environment variables при импорте модуля. Значения не перечитываются во время работы процесса. После изменения `.env` или системного окружения нужно перезапустить бота.
+Configuration is read from environment variables when the module is imported. Values are not reloaded while the process is running. After changing `.env` or shell environment variables, restart the bot.
 
-## Границы ответственности
+## Responsibility Boundaries
 
-`bot.py` сейчас содержит все основные слои:
+`bot.py` currently contains all main layers:
 
-- конфигурация;
-- system prompts и режимы;
+- configuration;
+- system prompts and prompt modes;
 - Ollama client;
 - Telegram command handlers;
 - STT;
@@ -102,7 +102,7 @@ USER_HISTORY[user_id] = [
 - OCR;
 - runtime state.
 
-Это удобно для быстрого прототипа, но при расширении проекта стоит разнести код на модули:
+This is convenient for a prototype, but the code should be split into modules as the project grows:
 
 ```text
 app/config.py
@@ -115,11 +115,11 @@ app/documents.py
 app/ocr.py
 ```
 
-## Главные технические риски
+## Main Technical Risks
 
-- Нет контроля доступа по Telegram ID.
-- История диалога не персистентна.
-- Тяжелые операции OCR/STT выполняются внутри handlers и могут задерживать обработку.
-- Нет тестов вокруг extraction, prompt routing и обработки ошибок.
-- Ошибки внешних систем пробрасываются пользователю как есть.
-- Нет graceful shutdown, health endpoint и метрик.
+- No Telegram user access control.
+- Conversation history is not persistent.
+- Heavy OCR/STT work is executed inside handlers and can delay processing.
+- No tests around extraction, prompt routing, or error handling.
+- External errors are exposed to users directly.
+- No graceful shutdown, health endpoint, or metrics.

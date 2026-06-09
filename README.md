@@ -1,50 +1,50 @@
 # Telegram Ollama Bot
 
-Локальный Telegram-бот для работы с Ollama: текстовый ассистент, деловые режимы промптов, распознавание голосовых сообщений и анализ документов.
+A local Telegram bot powered by Ollama. It works as a personal AI assistant with business-oriented prompt modes, voice transcription, document analysis, and OCR for scanned PDFs.
 
-Проект сейчас реализован как один Python-модуль [bot.py](bot.py). Он подходит для персонального локального использования: Telegram выступает интерфейсом, Ollama отвечает за LLM, faster-whisper распознает голос, Tesseract/Poppler помогают извлекать текст из PDF-сканов.
+The project is currently implemented as a compact Python application in [bot.py](bot.py). Telegram is the user interface, Ollama provides the local LLM backend, `faster-whisper` handles speech-to-text, and Tesseract/Poppler are used for OCR and PDF processing.
 
-## Возможности
+## Features
 
-- Обычный чат с локальной LLM через Ollama Chat API.
-- Контекст диалога по пользователю в памяти процесса.
-- Готовые режимы:
-  - `/email` - деловое письмо.
-  - `/rewrite` - редактура текста.
-  - `/shorten` - сжатие текста.
-  - `/vip` - текст для высокого руководителя или чиновника.
-  - `/surf` - стиль SURF Consulting.
-  - `/shell` - помощь по терминалу macOS/Linux.
-  - `/followup` - follow-up после встречи.
-- Служебные команды:
-  - `/start` - справка.
-  - `/status` - проверка Ollama и текущих лимитов.
-  - `/model` - текущая Ollama-модель.
-  - `/reset` - очистка истории текущего пользователя.
-  - `/myid` - Telegram ID пользователя.
-- Голосовые сообщения: локальная транскрибация через `faster-whisper`.
-- Документы: `.txt`, `.md`, `.pdf`, `.docx`.
-- OCR для PDF без текстового слоя.
+- Local text chat through the Ollama Chat API.
+- Per-user short-term conversation history stored in process memory.
+- Built-in prompt modes:
+  - `/email` - draft a business email.
+  - `/rewrite` - rewrite and improve text.
+  - `/shorten` - make text shorter and stronger.
+  - `/vip` - prepare concise text for senior executives or government officials.
+  - `/surf` - write in a SURF Consulting-style enterprise tone.
+  - `/shell` - help with macOS/Linux terminal commands.
+  - `/followup` - prepare a meeting follow-up.
+- Utility commands:
+  - `/start` - show help.
+  - `/status` - check Ollama and runtime settings.
+  - `/model` - show the current Ollama model.
+  - `/reset` - clear the current user's chat history.
+  - `/myid` - show the current Telegram user ID.
+- Voice messages with local transcription through `faster-whisper`.
+- Document analysis for `.txt`, `.md`, `.pdf`, and `.docx`.
+- OCR fallback for PDFs without a text layer.
 
-## Архитектура и планы
+## Documentation
 
-- [Архитектура](docs/ARCHITECTURE.md)
-- [Эксплуатация](docs/OPERATIONS.md)
-- [Роудмэп](docs/ROADMAP.md)
-- [Анализ проекта](docs/PROJECT_ANALYSIS.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Operations](docs/OPERATIONS.md)
+- [Roadmap](docs/ROADMAP.md)
+- [Project Analysis](docs/PROJECT_ANALYSIS.md)
 
-## Требования
+## Requirements
 
 - Python 3.10+.
-- Запущенная Ollama.
-- Telegram bot token от BotFather.
-- Системные утилиты для OCR и PDF:
-  - macOS: `poppler`, `tesseract`, языковые пакеты Tesseract.
+- A running Ollama instance.
+- A Telegram bot token from BotFather.
+- System utilities for OCR and PDF rendering:
+  - macOS: `poppler`, `tesseract`, Tesseract language packs.
   - Linux: `poppler-utils`, `tesseract-ocr`, `tesseract-ocr-rus`.
 
-Python-зависимости перечислены в [requirements.txt](requirements.txt).
+Python dependencies are listed in [requirements.txt](requirements.txt).
 
-## Быстрый старт на macOS
+## Quick Start On macOS
 
 ```bash
 brew install ollama poppler tesseract tesseract-lang
@@ -61,7 +61,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Заполните `TELEGRAM_TOKEN` в `.env`, затем экспортируйте переменные и запустите бота:
+Set `TELEGRAM_TOKEN` in `.env`, then export the variables and start the bot:
 
 ```bash
 set -a
@@ -70,64 +70,64 @@ set +a
 python bot.py
 ```
 
-Ollama должна быть доступна по `OLLAMA_URL`, по умолчанию:
+Ollama must be reachable through `OLLAMA_URL`. The default endpoint is:
 
 ```text
 http://127.0.0.1:11434/api/chat
 ```
 
-## Конфигурация
+## Configuration
 
-Основные переменные окружения:
+Main environment variables:
 
-| Переменная | По умолчанию | Назначение |
+| Variable | Default | Purpose |
 | --- | --- | --- |
-| `TELEGRAM_TOKEN` | нет | Токен Telegram-бота. Обязателен. |
-| `OLLAMA_URL` | `http://127.0.0.1:11434/api/chat` | Endpoint Ollama Chat API. |
-| `OLLAMA_MODEL` | `qwen3:8b` | Модель Ollama. |
-| `MAX_HISTORY_MESSAGES` | `12` | Сколько последних сообщений держать в памяти. |
-| `WHISPER_MODEL_SIZE` | `small` | Размер модели faster-whisper. |
-| `WHISPER_DEVICE` | `cpu` | Устройство для STT: `cpu`, `cuda`, `auto`. |
-| `WHISPER_COMPUTE_TYPE` | `int8` | Тип вычислений faster-whisper. |
-| `MAX_FILE_SIZE_MB` | `20` | Максимальный размер документа из Telegram. |
-| `MAX_DOCUMENT_CHARS` | `18000` | Сколько символов документа отправлять в LLM. |
-| `OCR_DPI` | `200` | DPI при рендере PDF-страниц для OCR. |
-| `OCR_LANG` | `rus+eng` | Языки Tesseract. |
-| `MAX_OCR_PAGES` | `20` | Максимум OCR-страниц PDF. |
-| `POPPLER_PATH` | `/opt/homebrew/bin` | Путь к Poppler на macOS/Homebrew. |
-| `TESSERACT_CMD` | `/opt/homebrew/bin/tesseract` | Путь к бинарнику Tesseract. |
+| `TELEGRAM_TOKEN` | none | Telegram bot token. Required. |
+| `OLLAMA_URL` | `http://127.0.0.1:11434/api/chat` | Ollama Chat API endpoint. |
+| `OLLAMA_MODEL` | `qwen3:8b` | Ollama model name. |
+| `MAX_HISTORY_MESSAGES` | `12` | Number of recent messages kept in memory. |
+| `WHISPER_MODEL_SIZE` | `small` | `faster-whisper` model size. |
+| `WHISPER_DEVICE` | `cpu` | STT device: `cpu`, `cuda`, or `auto`. |
+| `WHISPER_COMPUTE_TYPE` | `int8` | `faster-whisper` compute type. |
+| `MAX_FILE_SIZE_MB` | `20` | Maximum Telegram document size. |
+| `MAX_DOCUMENT_CHARS` | `18000` | Maximum extracted document text sent to the LLM. |
+| `OCR_DPI` | `200` | DPI used when rendering PDF pages for OCR. |
+| `OCR_LANG` | `rus+eng` | Tesseract OCR languages. |
+| `MAX_OCR_PAGES` | `20` | Maximum number of PDF pages processed by OCR. |
+| `POPPLER_PATH` | `/opt/homebrew/bin` | Path to Poppler binaries on macOS/Homebrew. |
+| `TESSERACT_CMD` | `/opt/homebrew/bin/tesseract` | Path to the Tesseract binary. |
 
-Полный пример лежит в [.env.example](.env.example).
+A complete example is available in [.env.example](.env.example).
 
-## Проверка
+## Verification
 
-Синтаксис без записи bytecode cache:
+Check Python syntax without writing bytecode cache:
 
 ```bash
 python3 -c 'import ast, pathlib; ast.parse(pathlib.Path("bot.py").read_text())'
 ```
 
-Проверка Ollama:
+Check Ollama:
 
 ```bash
 curl http://127.0.0.1:11434/api/tags
 ```
 
-После запуска бота отправьте в Telegram:
+After starting the bot, send this command in Telegram:
 
 ```text
 /status
 ```
 
-## Текущие ограничения
+## Current Limitations
 
-- История хранится в памяти процесса и теряется после перезапуска.
-- Нет allowlist пользователей: любой, кто знает бота, может писать ему.
-- Один файл `bot.py` содержит все слои: конфигурацию, Telegram handlers, LLM-клиент, STT и document parsing.
-- Документы длиннее `MAX_DOCUMENT_CHARS` обрезаются, RAG/индексации пока нет.
-- Нет автоматических тестов.
-- Ошибки показываются пользователю напрямую, без нормализации и без приватной диагностики.
+- Conversation history is stored in memory and is lost after restart.
+- There is no user allowlist yet; anyone who can reach the bot can use it.
+- `bot.py` currently contains all layers: configuration, Telegram handlers, LLM client, STT, document parsing, and OCR.
+- Documents longer than `MAX_DOCUMENT_CHARS` are truncated; RAG/document indexing is not implemented yet.
+- There are no automated tests yet.
+- Raw exception messages are returned to users in some error paths.
 
-## Рекомендуемый следующий шаг
+## Recommended Next Step
 
-Сначала добавить контроль доступа по Telegram ID и разнести код по модулям. Это снизит главный эксплуатационный риск и упростит дальнейшее развитие: персистентную память, очереди для тяжелых задач, RAG по документам и тесты.
+Add Telegram user access control and split the application into modules. This reduces the main operational risk and makes future work easier: persistent memory, background queues for heavy tasks, document RAG, and tests.
