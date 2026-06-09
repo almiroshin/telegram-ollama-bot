@@ -29,6 +29,7 @@ The project is currently implemented as a compact Python application in [bot.py]
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
+- [Deployment](docs/DEPLOYMENT.md)
 - [Operations](docs/OPERATIONS.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Project Analysis](docs/PROJECT_ANALYSIS.md)

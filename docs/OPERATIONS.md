@@ -205,3 +205,5 @@ For long-running usage, run the process with `launchd`, `systemd`, `supervisord`
 - run as a dedicated user with limited privileges;
 - keep `.env` in a controlled directory;
 - set resource limits for OCR/STT workloads.
+
+For the current Mac mini setup, use [Deployment](DEPLOYMENT.md).
