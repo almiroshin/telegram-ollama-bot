@@ -2,9 +2,9 @@
 
 ## Purpose
 
-The project implements a local Telegram assistant with two layers: a general AI assistant for daily work and a specialized assistant for SURF Consulting's IT infrastructure pre-sales, tender analysis, delivery risk review, and business communication workflows. Telegram provides the user interface, while text generation, voice transcription, and document processing run locally on the machine that hosts the bot.
+The project implements a local assistant with two layers: a general AI assistant for daily work and a specialized assistant for SURF Consulting's IT infrastructure pre-sales, tender analysis, delivery risk review, and business communication workflows. Telegram is the current user interface. eXpress is planned as the next corporate channel. Text generation, voice transcription, and document processing run locally on the machine that hosts the bot.
 
-## Components
+## Current Components
 
 ```mermaid
 flowchart LR
@@ -25,6 +25,28 @@ flowchart LR
     D --> M
     M --> TG
 ```
+
+## Target Channel Architecture
+
+```mermaid
+flowchart LR
+    TU["Telegram user"] --> TG["Telegram Bot API"]
+    EU["eXpress user"] --> EX["eXpress BotX/API"]
+    TG --> TA["Telegram adapter"]
+    EX --> EA["eXpress adapter"]
+    TA --> CORE["Assistant core"]
+    EA --> CORE
+    CORE --> A["Access control"]
+    CORE --> M["Prompt modes and chat history"]
+    CORE --> V["faster-whisper STT"]
+    CORE --> D["Document text extraction"]
+    A --> DB["SQLite database"]
+    M --> DB
+    M --> O["Ollama Chat API"]
+    O --> M
+```
+
+The current implementation is still Telegram-first. The target design is a channel adapter layer where Telegram and eXpress translate platform-specific events into internal assistant requests.
 
 ## Entry Point
 
@@ -61,7 +83,7 @@ Responsibilities:
 - `bot.py` - stable launchd-compatible entry point.
 - `app/config.py` - environment parsing, typed settings, logging setup.
 - `app/prompts.py` - system prompts and prompt modes.
-- `app/access.py` - Telegram owner checks and access decisions.
+- `app/access.py` - owner checks and access decisions.
 - `app/history.py` - SQLite-backed conversation history repository.
 - `app/users.py` - SQLite-backed managed user repository.
 - `app/llm.py` - Ollama Chat API client and history orchestration.
@@ -73,13 +95,13 @@ Responsibilities:
 ## Text Request Flow
 
 1. The user sends a text message or command.
-2. The handler selects a prompt mode: `default`, `audit`, `proposal`, `tender`, `vendor`, `risk`, `email`, `rewrite`, `shorten`, `vip`, `surf`, `shell`, or `followup`.
+2. The channel handler selects a prompt mode: `default`, `audit`, `proposal`, `tender`, `vendor`, `risk`, `email`, `rewrite`, `shorten`, `vip`, `surf`, `shell`, or `followup`.
 3. `ask_ollama()` builds the request:
    - the system prompt for the selected mode;
    - the user's recent history;
    - the new user message.
 4. The request is sent to `OLLAMA_URL` with `POST`.
-5. The response is stored in SQLite and sent back to Telegram.
+5. The response is stored in SQLite and sent back through the active channel.
 
 History is stored in the SQLite database configured by `HISTORY_DB_PATH`:
 
@@ -91,7 +113,7 @@ After each successful response, the user's persisted history is trimmed to `MAX_
 
 ## Access Request Flow
 
-Owners are configured through `OWNER_TELEGRAM_USER_IDS`. The legacy `ALLOWED_TELEGRAM_USER_IDS` is still supported as a direct allowlist and as an owner fallback when no owners are configured.
+Owners are currently configured through `OWNER_TELEGRAM_USER_IDS`. The legacy `ALLOWED_TELEGRAM_USER_IDS` is still supported as a direct allowlist and as an owner fallback when no owners are configured. eXpress integration will require channel-neutral identities before production use.
 
 Managed users are stored in the same SQLite database:
 

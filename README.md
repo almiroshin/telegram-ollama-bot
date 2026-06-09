@@ -2,7 +2,7 @@
 
 A local Telegram bot powered by Ollama. It works as a general AI assistant for daily work and as a specialized pre-sales and delivery assistant for SURF Consulting's IT infrastructure, supply, tender, and consulting workflows.
 
-The project is implemented as a small Python application with [bot.py](bot.py) as the entry point and the main runtime code split across the [app](app) package. Telegram is the user interface, Ollama provides the local LLM backend, `faster-whisper` handles speech-to-text, and Tesseract/Poppler are used for OCR and PDF processing.
+The project is implemented as a small Python application with [bot.py](bot.py) as the entry point and the main runtime code split across the [app](app) package. Telegram is the current user interface, with eXpress planned as the next corporate channel. Ollama provides the local LLM backend, `faster-whisper` handles speech-to-text, and Tesseract/Poppler are used for OCR and PDF processing.
 
 ## Features
 
@@ -10,6 +10,7 @@ The project is implemented as a small Python application with [bot.py](bot.py) a
 - Per-user short-term conversation history persisted in SQLite.
 - Owner-managed access requests and SQLite-backed user approvals.
 - General assistant workflows for writing, rewriting, shortening, shell help, voice notes, and document analysis.
+- Current Telegram interface with a planned channel adapter path for eXpress.
 - SURF business prompt modes:
   - `/audit` - prepare IT landscape audit and discovery questions.
   - `/proposal` - draft a commercial proposal structure.
@@ -43,6 +44,7 @@ The project is implemented as a small Python application with [bot.py](bot.py) a
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
+- [Channel Integrations](docs/CHANNEL_INTEGRATIONS.md)
 - [SURF Business Context](docs/SURF_BUSINESS_CONTEXT.md)
 - [Deployment](docs/DEPLOYMENT.md)
 - [Operations](docs/OPERATIONS.md)
@@ -160,6 +162,7 @@ Approved users are stored in SQLite and can use the bot without changing `.env`.
 
 - Conversation history is persisted in SQLite, but there is no `/history` inspection command yet.
 - There is no case workspace yet for customer opportunities, tenders, and proposal drafts.
+- eXpress is planned, but the current runtime channel is Telegram only.
 - Vendor, stock, price, warranty, and delivery facts are not backed by a structured source of truth yet.
 - Access control is disabled unless `OWNER_TELEGRAM_USER_IDS` or the legacy `ALLOWED_TELEGRAM_USER_IDS` is set.
 - Heavy OCR/STT work still runs inside Telegram handlers.

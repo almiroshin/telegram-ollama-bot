@@ -13,6 +13,7 @@ The highest-value workflows are:
 - draft, rewrite, shorten, and structure texts;
 - help with shell commands and operational troubleshooting;
 - process voice notes and documents;
+- work from Telegram now and eXpress later through channel adapters;
 - qualify customer requests and prepare discovery questions;
 - support IT landscape audits;
 - analyze tenders, RFPs, technical specifications, and procurement documents;
@@ -29,6 +30,7 @@ The highest-value workflows are:
 - Prefer structured outputs that can be reused in email, proposals, and internal notes.
 - Keep generic assistant features stable while adding SURF-specific workflows.
 - Preserve the general assistant layer; specialized workflows should extend it, not replace it.
+- Design new state around internal users and cases, not Telegram-only identifiers.
 - Add tests around prompt routing, document parsing, access control, and failure paths.
 
 ## Phase 0. Operational Foundation
@@ -89,13 +91,41 @@ Readiness criteria:
 - pre-sales engineers can produce audit questions and a first proposal outline;
 - tender documents generate a structured response plan and risk list.
 
-## Phase 2. Pre-Sales Case Workspace
+## Phase 2. Channel Adapter Layer And eXpress Planning
+
+Goal: prepare the assistant for both Telegram and eXpress without duplicating business logic.
+
+Why now:
+
+- Telegram is useful for fast iteration and personal/team usage.
+- eXpress is the expected corporate channel for secure internal communication.
+- Future case workspace, access control, document history, and audit logs should not be hardcoded to Telegram user IDs.
+
+Tasks:
+
+- document the target channel architecture. Started in `docs/CHANNEL_INTEGRATIONS.md`.
+- define internal request/response objects independent of Telegram and eXpress SDK objects;
+- move Telegram-specific code toward `app/channels/telegram.py`;
+- introduce a shared assistant core callable from any channel;
+- add channel-neutral identity tables: `internal_users` and `channel_identities`;
+- obtain exact eXpress BotX/API documentation and sample payloads for the target deployment;
+- decide between eXpress bot-only, SmartApp, or bot plus SmartApp UI;
+- add eXpress environment variables and deployment notes after API discovery.
+
+Readiness criteria:
+
+- Telegram behavior is preserved;
+- command routing can be tested without Telegram objects;
+- eXpress MVP scope is clear and backed by real API payloads;
+- new persistent data is channel-neutral.
+
+## Phase 3. Pre-Sales Case Workspace
 
 Goal: group messages, documents, and outputs by customer opportunity instead of only by Telegram user.
 
 Tasks:
 
-- add a `cases` table: customer, opportunity name, sector, stage, owner, created date;
+- add a `cases` table: customer, opportunity name, sector, stage, owner, created date, active channels;
 - add commands: `/case_new`, `/case_select`, `/case_status`, `/case_close`;
 - attach document analyses and generated drafts to a case;
 - store key facts: customer goals, deadlines, budget signals, required vendors, constraints, risks;
@@ -107,7 +137,7 @@ Readiness criteria:
 - the bot can summarize a case after restart;
 - a case brief can be reused for internal handoff.
 
-## Phase 3. Tender And Document Intelligence
+## Phase 4. Tender And Document Intelligence
 
 Goal: analyze long commercial and technical documents without truncating only the beginning.
 
@@ -126,7 +156,7 @@ Readiness criteria:
 - the bot can answer questions about previously uploaded documents;
 - answers include the fragments or pages used.
 
-## Phase 4. Vendor And Supply Knowledge Base
+## Phase 5. Vendor And Supply Knowledge Base
 
 Goal: support vendor alternatives and supply planning with explicit source control.
 
@@ -144,7 +174,7 @@ Readiness criteria:
 - supplier checks are visible before a proposal is sent;
 - stale data is clearly marked.
 
-## Phase 5. Proposal Factory
+## Phase 6. Proposal Factory
 
 Goal: turn case facts and document analysis into reusable proposal drafts.
 
@@ -162,7 +192,7 @@ Readiness criteria:
 - assumptions and missing data are visible;
 - a proposal can be reviewed and revised without losing previous drafts.
 
-## Phase 6. Heavy Work And Reliability
+## Phase 7. Heavy Work And Reliability
 
 Goal: avoid blocking Telegram handlers with OCR, STT, long LLM requests, and document indexing.
 
@@ -181,7 +211,7 @@ Readiness criteria:
 - users receive clear processing status;
 - CPU/RAM usage is bounded on the Mac mini.
 
-## Phase 7. Observability, Governance, And Operations
+## Phase 8. Observability, Governance, And Operations
 
 Goal: make internal production use auditable and recoverable.
 
@@ -204,6 +234,7 @@ Readiness criteria:
 ## Backlog
 
 - Web UI for cases, prompts, users, and documents.
+- eXpress SmartApp UI for structured case and proposal workflows.
 - Integration with CRM or task tracker.
 - Vendor stock import from spreadsheets.
 - Role separation beyond owner/user.
@@ -215,8 +246,8 @@ Readiness criteria:
 
 ## Next Sprint Priorities
 
-1. Add `/case_new`, `/case_select`, and a minimal SQLite `cases` table.
+1. Extract channel-neutral assistant request/response objects.
 2. Add command-to-prompt routing tests for all SURF modes.
-3. Improve document mode for tender/RFP extraction.
-4. Add response splitting for long Telegram outputs.
-5. Add backup guidance for `bot.sqlite` on the Mac mini.
+3. Design internal users and channel identities before eXpress implementation.
+4. Add `/case_new`, `/case_select`, and a minimal channel-neutral `cases` table.
+5. Improve document mode for tender/RFP extraction.

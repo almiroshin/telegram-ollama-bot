@@ -2,14 +2,14 @@
 
 ## Executive Summary
 
-This project is a local AI assistant exposed through Telegram for SURF Consulting. The target product has two layers: a general AI assistant for daily work and a specialized assistant for SURF's IT infrastructure business. It should support writing, rewriting, shell help, voice notes, document analysis, pre-sales discovery, IT landscape audits, tender/RFP analysis, commercial proposal drafting, vendor alternative comparison, delivery risk review, and executive/customer communication.
+This project is a local AI assistant for SURF Consulting. Telegram is the current channel, but the target product should support both Telegram and eXpress through channel adapters. The assistant has two layers: a general AI assistant for daily work and a specialized assistant for SURF's IT infrastructure business. It should support writing, rewriting, shell help, voice notes, document analysis, pre-sales discovery, IT landscape audits, tender/RFP analysis, commercial proposal drafting, vendor alternative comparison, delivery risk review, and executive/customer communication.
 
 ## What Works Well
 
 - Simple architecture with very little infrastructure.
 - Key processing dependencies can run locally: Ollama, `faster-whisper`, and Tesseract.
 - Prompt modes cover both general assistant tasks and SURF Consulting's infrastructure sales and delivery workflows.
-- Voice messages and documents are available through the same Telegram interface.
+- Voice messages and documents are available through the current Telegram interface.
 - PDF processing has an OCR fallback.
 - Runtime configuration is controlled through environment variables.
 - File size, document text, and OCR page limits are already present.
@@ -18,9 +18,11 @@ This project is a local AI assistant exposed through Telegram for SURF Consultin
 
 | Area | Status | Notes |
 | --- | --- | --- |
+| Telegram channel | Available | Current production channel. |
+| eXpress channel | Planned | Should use a channel adapter and eXpress BotX/API discovery. |
 | Text chat | Available | Through the Ollama Chat API. |
 | Prompt modes | Available | Includes SURF-specific modes: `/audit`, `/proposal`, `/tender`, `/vendor`, `/risk`. |
-| History | Available | SQLite-backed, keyed by Telegram user ID. |
+| History | Available | SQLite-backed, currently keyed by Telegram user ID. |
 | Voice | Available | `faster-whisper`, Russian language. |
 | TXT/MD | Available | Multiple fallback encodings. |
 | PDF | Available | Direct text extraction through `pypdf`. |
@@ -100,6 +102,12 @@ The assistant must not invent prices, stock availability, warranty conditions, l
 
 Recommendation: keep `/vendor` as decision support first, then add explicit supplier data ingestion with freshness labels and human confirmation.
 
+### 7. Telegram-Only Architecture Will Block eXpress
+
+The current handlers, access control, and history are tied to Telegram-specific identifiers and objects. This is acceptable for the current bot, but it will create migration work when eXpress is added.
+
+Recommendation: introduce channel-neutral request/response objects, internal users, and channel identities before implementing case workspace or eXpress support.
+
 ## Recommended Target Architecture
 
 ```text
@@ -112,6 +120,10 @@ app/
   history.py
   access.py
   users.py
+  assistant.py
+  channels/
+    telegram.py
+    express.py
   handlers.py
   stt.py
   documents.py
@@ -131,6 +143,7 @@ Minimum refactoring sequence:
 5. Add tests for helper functions. Started.
 6. Extract the Ollama client and Telegram handlers. Done.
 7. Add SQLite-backed conversation history. Done.
+8. Add channel adapter layer before eXpress implementation. Planned.
 
 ## Near-Term Technical Tasks
 
@@ -139,6 +152,8 @@ Minimum refactoring sequence:
 - Add `.env` loading through `python-dotenv` or explicitly document shell export.
 - Add user-facing history inspection and long-term memory controls.
 - Add reusable proposal, audit, tender, and risk templates.
+- Add channel-neutral assistant request/response objects.
+- Add internal users and channel identities before eXpress implementation.
 - Add local knowledge ingestion for vendor decks, stock exports, prior proposals, tender answers, and delivery lessons learned.
 - Add broader test coverage for document extraction, prompt routing, and external error handling.
 - Split long responses to respect Telegram message limits.

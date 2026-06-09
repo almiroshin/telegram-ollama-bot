@@ -50,6 +50,12 @@ Customer documents, tenders, prices, and infrastructure details can be sensitive
 
 Bot implication: local processing is a product requirement, not only an implementation detail.
 
+### 7. Corporate Channel Support Matters
+
+Telegram is convenient for fast iteration, but SURF's internal and customer-facing workflows may need a corporate messenger. eXpress should be planned as a first-class channel because it is positioned around secure corporate messaging, chat-bots, SmartApps, and integrations with enterprise systems.
+
+Bot implication: the assistant should move toward a channel adapter architecture before deeper case management is implemented.
+
 ## Repositioned Product
 
 The project should evolve into a two-layer local assistant:
@@ -71,6 +77,7 @@ Primary workflows:
 - draft, rewrite, shorten, and structure texts;
 - help with shell commands and operational troubleshooting;
 - process voice notes and documents;
+- work through Telegram now and eXpress later;
 - qualify a new customer request;
 - prepare discovery questions for an infrastructure audit;
 - analyze an RFP, tender, or technical specification;
